@@ -15,7 +15,7 @@
         },
         "startTime": {
             "type": "string",
-            "format": "date-time"
+            "format": "datetime"
         },
         "duration": {
             "type": "integer"
@@ -24,6 +24,9 @@
             "type": ["null", "string"]
         },
         "direction": {
+            "type": ["null", "string"]
+        },
+        "recording": {
             "type": ["null", "string"]
         },
         "action": {
