@@ -1,4 +1,6 @@
+import inspect
 import math
+import os
 import pytz
 import singer
 import singer.utils
@@ -12,13 +14,56 @@ from tap_ringcentral.config import get_config_start_date
 from tap_ringcentral.state import incorporate, save_state, \
     get_last_record_value_for_table
 
-from tap_framework.streams import BaseStream as base
+from singer import metadata as meta
 
 LOGGER = singer.get_logger()
 
 
-class BaseStream(base):
+def is_stream_selected(stream):
+    stream_metadata = meta.to_map(stream.metadata)
+
+    selected = meta.get(stream_metadata, (), 'selected')
+    inclusion = meta.get(stream_metadata, (), 'inclusion')
+    if inclusion == 'unsupported':
+        return False
+    if selected is not None:
+        return selected
+
+    return inclusion == 'automatic'
+
+
+class BaseStream:
+    TABLE = None
     KEY_PROPERTIES = ['id']
+    API_METHOD = 'GET'
+    REQUIRES = []
+
+    def __init__(self, config, state, catalog, client):
+        self.config = config
+        self.state = state
+        self.catalog = catalog
+        self.client = client
+        self.substreams = []
+
+    def get_class_path(self):
+        return os.path.dirname(inspect.getfile(self.__class__))
+
+    def load_schema_by_name(self, name):
+        return singer.utils.load_json(
+            os.path.normpath(
+                os.path.join(
+                    self.get_class_path(),
+                    '../schemas/{}.json'.format(name))))
+
+    def get_schema(self):
+        return self.load_schema_by_name(self.TABLE)
+
+    def get_stream_data(self, result):
+        """
+        Given a result set from Campaign Monitor, return the data
+        to be persisted for this stream.
+        """
+        raise RuntimeError("get_stream_data not implemented!")
 
     def get_params(self, page=1):
         return {
@@ -30,7 +75,81 @@ class BaseStream(base):
         return {}
 
     def get_url(self, path):
-        return '{}{}'.format(BASE_URL, path)
+        return '{}{}'.format(self.client.base_url, path)
+
+    def get_catalog_keys(self):
+        return list(self.catalog.schema.properties.keys())
+
+    @classmethod
+    def requirements_met(cls, catalog):
+        selected_streams = [
+            s.stream for s in catalog.streams if is_stream_selected(s)
+        ]
+
+        return set(cls.REQUIRES).issubset(selected_streams)
+
+    @classmethod
+    def matches_catalog(cls, stream_catalog):
+        return stream_catalog.stream == cls.TABLE
+
+    def generate_catalog(self):
+        schema = self.get_schema()
+        mdata = singer.metadata.new()
+
+        mdata = singer.metadata.write(
+            mdata,
+            (),
+            'inclusion',
+            'available'
+        )
+
+        for field_name, field_schema in schema.get('properties').items():
+            inclusion = 'available'
+
+            if field_name in self.KEY_PROPERTIES:
+                inclusion = 'automatic'
+
+            mdata = singer.metadata.write(
+                mdata,
+                ('properties', field_name),
+                'inclusion',
+                inclusion
+            )
+
+        return [{
+            'tap_stream_id': self.TABLE,
+            'stream': self.TABLE,
+            'key_properties': self.KEY_PROPERTIES,
+            'schema': self.get_schema(),
+            'metadata': singer.metadata.to_list(mdata)
+        }]
+
+    def transform_record(self, record):
+        with singer.Transformer() as tx:
+            metadata = {}
+
+            if self.catalog.metadata is not None:
+                metadata = singer.metadata.to_map(self.catalog.metadata)
+
+            return tx.transform(
+                record,
+                self.catalog.schema.to_dict(),
+                metadata)
+
+    def write_schema(self):
+        singer.write_schema(
+            self.catalog.stream,
+            self.catalog.schema.to_dict(),
+            key_properties=self.catalog.key_properties)
+
+    def sync(self):
+        LOGGER.info('Syncing stream {} with {}'
+                    .format(self.catalog.tap_stream_id,
+                            self.__class__.__name__))
+
+        self.write_schema()
+
+        return self.sync_data()
 
     def sync_data(self):
         table = self.TABLE

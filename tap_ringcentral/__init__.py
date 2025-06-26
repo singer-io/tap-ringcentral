@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
 import singer
+import sys
 
-import tap_framework
-from tap_framework.state import save_state
 import argparse
 import json
 
@@ -13,7 +12,34 @@ from tap_ringcentral.streams import AVAILABLE_STREAMS
 LOGGER = singer.get_logger()  # noqa
 
 
-class RingCentralRunner(tap_framework.Runner):
+class RingCentralRunner:
+    def __init__(self, args, client, available_streams):
+        self.config = args.config
+        self.state = args.state
+        self.catalog = args.catalog
+        self.client = client
+        self.available_streams = available_streams
+
+    def save_state(self, state):
+        if not state:
+            return
+
+        LOGGER.info('Updating state.')
+
+        singer.write_state(state)
+
+    def do_discover(self):
+        LOGGER.info("Starting discovery.")
+
+        catalog = []
+
+        for available_stream in self.available_streams:
+            stream = available_stream(self.config, self.state, None, None)
+
+            catalog += stream.generate_catalog()
+
+        json.dump({'streams': catalog}, sys.stdout, indent=4)
+
     # Sync the streams in the order specified in the
     # streams/__init__.py list of AVAILABLE_STREAMS
     def do_sync(self):
@@ -41,7 +67,7 @@ class RingCentralRunner(tap_framework.Runner):
                              .format(stream.TABLE))
                 raise e
 
-        save_state(self.state)
+        self.save_state(self.state)
 
 
 @singer.utils.handle_top_exception(LOGGER)
