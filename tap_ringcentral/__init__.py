@@ -10,6 +10,7 @@ from tap_ringcentral.discover import discover
 
 from tap_ringcentral.client import RingCentralClient
 from tap_ringcentral.streams import AVAILABLE_STREAMS
+from tap_ringcentral.streams.base import is_stream_selected
 
 LOGGER = singer.get_logger()  # noqa
 
@@ -33,6 +34,34 @@ class RingCentralRunner:
         catalog = discover()
         json.dump(catalog.to_dict(), sys.stdout, indent=2)
         LOGGER.info("Finished discover")
+
+    def get_streams_to_replicate(self):
+        streams = []
+
+        if not self.catalog:
+            return streams
+
+        for stream_catalog in self.catalog.streams:
+            if not is_stream_selected(stream_catalog):
+                LOGGER.info("'{}' is not marked selected, skipping."
+                            .format(stream_catalog.stream))
+                continue
+
+            for available_stream in self.available_streams:
+                if available_stream.matches_catalog(stream_catalog):
+                    if not available_stream.requirements_met(self.catalog):
+                        raise RuntimeError(
+                            "{} requires that that the following are "
+                            "selected: {}"
+                            .format(stream_catalog.stream,
+                                    ','.join(available_stream.REQUIRES)))
+
+                    to_add = available_stream(
+                        self.config, self.state, stream_catalog, self.client)
+
+                    streams.append(to_add)
+
+        return streams
 
     # Sync the streams in the order specified in the
     # streams/__init__.py list of AVAILABLE_STREAMS

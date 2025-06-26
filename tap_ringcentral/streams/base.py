@@ -33,10 +33,7 @@ def is_stream_selected(stream):
 
 
 class BaseStream:
-    TABLE = None
     KEY_PROPERTIES = ['id']
-    API_METHOD = 'GET'
-    REQUIRES = []
 
     def __init__(self, config, state, catalog, client):
         self.config = config
@@ -58,13 +55,6 @@ class BaseStream:
     def get_schema(self):
         return self.load_schema_by_name(self.TABLE)
 
-    def get_stream_data(self, result):
-        """
-        Given a result set from Campaign Monitor, return the data
-        to be persisted for this stream.
-        """
-        raise RuntimeError("get_stream_data not implemented!")
-
     def get_params(self, page=1):
         return {
             "page": page,
@@ -74,55 +64,13 @@ class BaseStream:
     def get_body(self):
         return {}
 
-    def get_url(self, path):
-        return '{}{}'.format(self.client.base_url, path)
-
-    def get_catalog_keys(self):
-        return list(self.catalog.schema.properties.keys())
-
-    @classmethod
-    def requirements_met(cls, catalog):
-        selected_streams = [
-            s.stream for s in catalog.streams if is_stream_selected(s)
-        ]
-
-        return set(cls.REQUIRES).issubset(selected_streams)
-
-    @classmethod
-    def matches_catalog(cls, stream_catalog):
-        return stream_catalog.stream == cls.TABLE
-
-    def generate_catalog(self):
-        schema = self.get_schema()
-        mdata = singer.metadata.new()
-
-        mdata = singer.metadata.write(
-            mdata,
-            (),
-            'inclusion',
-            'available'
-        )
-
-        for field_name, field_schema in schema.get('properties').items():
-            inclusion = 'available'
-
-            if field_name in self.KEY_PROPERTIES:
-                inclusion = 'automatic'
-
-            mdata = singer.metadata.write(
-                mdata,
-                ('properties', field_name),
-                'inclusion',
-                inclusion
-            )
-
-        return [{
-            'tap_stream_id': self.TABLE,
-            'stream': self.TABLE,
-            'key_properties': self.KEY_PROPERTIES,
-            'schema': self.get_schema(),
-            'metadata': singer.metadata.to_list(mdata)
-        }]
+    def get_stream_data(self, result, contact_id):
+        xf = []
+        for record in result['records']:
+            record_xf = self.transform_record(record)
+            record_xf['_contact_id'] = contact_id
+            xf.append(record_xf)
+        return xf
 
     def transform_record(self, record):
         with singer.Transformer() as tx:
@@ -219,14 +167,6 @@ class ContactBaseStream(BaseStream):
             "dateTo": date_to,
             "showDeleted": True,
         }
-
-    def get_stream_data(self, result, contact_id):
-        xf = []
-        for record in result['records']:
-            record_xf = self.transform_record(record)
-            record_xf['_contact_id'] = contact_id
-            xf.append(record_xf)
-        return xf
 
     def sync_data_for_extension(self, date, interval, extensionId):
         table = self.TABLE
