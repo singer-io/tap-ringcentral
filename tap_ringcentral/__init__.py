@@ -6,6 +6,8 @@ import sys
 import argparse
 import json
 
+from tap_ringcentral.discover import discover
+
 from tap_ringcentral.client import RingCentralClient
 from tap_ringcentral.streams import AVAILABLE_STREAMS
 
@@ -23,22 +25,14 @@ class RingCentralRunner:
     def save_state(self, state):
         if not state:
             return
-
         LOGGER.info('Updating state.')
-
         singer.write_state(state)
 
     def do_discover(self):
-        LOGGER.info("Starting discovery.")
-
-        catalog = []
-
-        for available_stream in self.available_streams:
-            stream = available_stream(self.config, self.state, None, None)
-
-            catalog += stream.generate_catalog()
-
-        json.dump({'streams': catalog}, sys.stdout, indent=4)
+        LOGGER.info("Starting discovery")
+        catalog = discover()
+        json.dump(catalog.to_dict(), sys.stdout, indent=2)
+        LOGGER.info("Finished discover")
 
     # Sync the streams in the order specified in the
     # streams/__init__.py list of AVAILABLE_STREAMS
