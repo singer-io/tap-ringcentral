@@ -14,3 +14,11 @@ AVAILABLE_STREAMS = [
 
 
 __all__ = [s.NAME for s in AVAILABLE_STREAMS]
+
+
+STREAMS = {
+    "contacts": ContactsStream,
+    "call_log": CallLogStream,
+    "company_call_log": CompanyCallLogStream,
+    "messages": MessageStream,
+}
