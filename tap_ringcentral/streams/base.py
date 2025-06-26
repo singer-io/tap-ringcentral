@@ -64,6 +64,9 @@ class BaseStream:
     def get_body(self):
         return {}
 
+    def get_url(self, path):
+        return '{}{}'.format(BASE_URL, path)
+
     def get_stream_data(self, result, contact_id):
         xf = []
         for record in result['records']:
@@ -167,6 +170,14 @@ class ContactBaseStream(BaseStream):
             "dateTo": date_to,
             "showDeleted": True,
         }
+
+    def get_stream_data(self, result, contact_id):
+        xf = []
+        for record in result['records']:
+            record_xf = self.transform_record(record)
+            record_xf['_contact_id'] = contact_id
+            xf.append(record_xf)
+        return xf
 
     def sync_data_for_extension(self, date, interval, extensionId):
         table = self.TABLE
