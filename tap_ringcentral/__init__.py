@@ -48,18 +48,9 @@ class RingCentralRunner:
                 continue
 
             for available_stream in self.available_streams:
-                if available_stream.matches_catalog(stream_catalog):
-                    if not available_stream.requirements_met(self.catalog):
-                        raise RuntimeError(
-                            "{} requires that that the following are "
-                            "selected: {}"
-                            .format(stream_catalog.stream,
-                                    ','.join(available_stream.REQUIRES)))
-
-                    to_add = available_stream(
-                        self.config, self.state, stream_catalog, self.client)
-
-                    streams.append(to_add)
+                to_add = available_stream(
+                    self.config, self.state, stream_catalog, self.client)
+                streams.append(to_add)
 
         return streams
 
