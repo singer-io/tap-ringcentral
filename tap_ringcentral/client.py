@@ -30,10 +30,9 @@ class RingCentralClient:
         client_secret = self.config.get('client_secret')
         auth = HTTPBasicAuth(client_id, client_secret)
 
-        body = {
-            'code': self.config.get('authorization_code'),
-            'redirect_uri': self.config.get('redirect_uri'),
-            'grant_type': 'authorization_code'
+        payload = {
+            "grant_type": "refresh_token",
+            "refresh_token": self.config.get('refresh_token')
         }
 
         headers = {
@@ -45,7 +44,7 @@ class RingCentralClient:
             '{}/restapi/oauth/token'.format(self.base_url),
             auth=auth,
             headers=headers,
-            data=body)
+            data=payload)
 
         response.raise_for_status()
         json = response.json()
