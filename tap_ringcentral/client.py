@@ -47,6 +47,7 @@ class RingCentralClient:
             headers=headers,
             data=body)
 
+        response.raise_for_status()
         json = response.json()
         return json['refresh_token'], json['access_token']
 
