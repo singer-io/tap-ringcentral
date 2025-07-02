@@ -89,8 +89,7 @@ def main():
     args = singer.utils.parse_args(required_config_keys=[
         'client_id',
         'client_secret',
-        'username',
-        'password',
+        'refresh_token',
         'api_url',
         'start_date'
     ])
