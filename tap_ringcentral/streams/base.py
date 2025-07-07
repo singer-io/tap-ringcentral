@@ -34,6 +34,8 @@ def is_stream_selected(stream):
 
 class BaseStream:
     KEY_PROPERTIES = ['id']
+    TABLE = None
+    REQUIRES = []
 
     def __init__(self, config, state, catalog, client):
         self.config = config
@@ -74,6 +76,15 @@ class BaseStream:
             record_xf['_contact_id'] = contact_id
             xf.append(record_xf)
         return xf
+
+    @classmethod
+    def requirements_met(cls, catalog):
+        selected_streams = [s.stream for s in catalog.streams if is_stream_selected(s)]
+        return set(cls.REQUIRES).issubset(selected_streams)
+
+    @classmethod
+    def matches_catalog(cls, stream_catalog):
+        return stream_catalog.stream == cls.TABLE
 
     def transform_record(self, record):
         with singer.Transformer() as tx:
