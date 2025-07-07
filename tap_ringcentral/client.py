@@ -31,8 +31,8 @@ class RingCentralClient:
         auth = HTTPBasicAuth(client_id, client_secret)
 
         payload = {
-            "assertion": self.config.get('jwt'),
-            "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer"
+            'assertion': self.config.get('jwt'),
+            'grant_type': 'urn:ietf:params:oauth:grant-type:jwt-bearer'
         }
 
         headers = {
