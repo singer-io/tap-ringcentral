@@ -78,7 +78,7 @@ class RingCentralClient:
 
         elif response.status_code in [401, 403]:
             # Unauthorized - has the token expired?
-            self.refresh_token, self.access_token = self.get_authorization()
+            self.access_token = self.get_authorization()
             raise APIException("Token expired - refetching")
 
         elif response.status_code != 200:
