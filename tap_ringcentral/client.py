@@ -31,8 +31,8 @@ class RingCentralClient:
         auth = HTTPBasicAuth(client_id, client_secret)
 
         payload = {
-            "grant_type": "refresh_token",
-            "refresh_token": self.config.get('refresh_token')
+            'refresh_token': self.config.get('refresh_token'),
+            'grant_type': 'refresh_token'
         }
 
         headers = {
