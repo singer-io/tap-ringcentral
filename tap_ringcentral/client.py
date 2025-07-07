@@ -6,6 +6,8 @@ import time
 import singer
 import singer.metrics
 
+from requests.auth import HTTPBasicAuth
+
 LOGGER = singer.get_logger()  # noqa
 
 
@@ -21,33 +23,32 @@ class RingCentralClient:
         self.config = config
         self.base_url = self.config.get('api_url')
 
-        self.refresh_token, self.access_token = self.get_authorization()
+        self.access_token = self.get_authorization()
 
     def get_authorization(self):
         client_id = self.config.get('client_id')
         client_secret = self.config.get('client_secret')
-        basic_auth = base64.b64encode("{}:{}".format(client_id, client_secret).encode())
+        auth = HTTPBasicAuth(client_id, client_secret)
 
-        body = {
-            'username': self.config.get('username'),
-            'password': self.config.get('password'),
-            'grant_type': 'password'
+        payload = {
+            "assertion": self.config.get('jwt'),
+            "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer"
         }
 
         headers = {
-            'Authorization': 'Basic {}'.format(basic_auth.decode()),
             'Content-Type': 'application/x-www-form-urlencoded'
         }
 
         response = requests.request(
             'POST',
             '{}/restapi/oauth/token'.format(self.base_url),
+            auth=auth,
             headers=headers,
-            data=body)
+            data=payload)
 
         response.raise_for_status()
         json = response.json()
-        return json['refresh_token'], json['access_token']
+        return json['access_token']
 
     @backoff.on_exception(backoff.expo,
                           APIException,
