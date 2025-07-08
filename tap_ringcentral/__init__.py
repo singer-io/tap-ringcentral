@@ -9,19 +9,19 @@ import json
 from tap_ringcentral.discover import discover
 
 from tap_ringcentral.client import RingCentralClient
-from tap_ringcentral.streams import AVAILABLE_STREAMS
+from tap_ringcentral.streams import STREAMS
 from tap_ringcentral.streams.base import is_stream_selected
 
 LOGGER = singer.get_logger()  # noqa
 
 
 class RingCentralRunner:
-    def __init__(self, args, client, available_streams):
+    def __init__(self, args, client):
         self.config = args.config
         self.state = args.state
         self.catalog = args.catalog
         self.client = client
-        self.available_streams = available_streams
+        self.available_streams = STREAMS.values()
 
     def save_state(self, state):
         if not state:
@@ -72,7 +72,7 @@ class RingCentralRunner:
         streams = self.get_streams_to_replicate()
         stream_map = {s.NAME: s for s in streams}
 
-        for available_stream in AVAILABLE_STREAMS:
+        for available_stream in STREAMS.values():
             if available_stream.NAME not in stream_map:
                 continue
 
@@ -106,8 +106,7 @@ def main():
 
     client = RingCentralClient(args.config)
 
-    runner = RingCentralRunner(
-        args, client, AVAILABLE_STREAMS)
+    runner = RingCentralRunner(args, client)
 
     if args.discover:
         runner.do_discover()
