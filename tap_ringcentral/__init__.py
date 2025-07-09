@@ -111,7 +111,7 @@ def main():
 
     if args.discover:
         runner.do_discover()
-    else:
+    elif args.catalog:
         runner.do_sync()
 
 
