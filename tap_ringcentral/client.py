@@ -58,12 +58,7 @@ class RingCentralClient:
         response.raise_for_status()
         json = response.json()
 
-        self.write_config(
-            {
-                'access_token': json['access_token'],
-                'refresh_token': json['refresh_token']
-            }
-        )
+        self.write_config({'refresh_token': json['refresh_token']})
 
         return json['refresh_token'], json['access_token']
 
