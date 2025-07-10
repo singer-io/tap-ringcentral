@@ -2,7 +2,7 @@ import requests
 import base64
 import backoff
 import time
-
+import json
 import singer
 import singer.metrics
 
@@ -19,11 +19,20 @@ class RingCentralClient:
 
     MAX_TRIES = 7
 
-    def __init__(self, config):
+    def __init__(self, config, config_path):
         self.config = config
+        self.config_path = config_path
         self.base_url = self.config.get('api_url')
 
         self.refresh_token, self.access_token = self.get_authorization()
+
+    def write_config(self, data):
+        '''
+        Updates the provided filepath with json format of the `data` object
+        '''
+        self.config.update(data)
+        with open(self.config_path, "w") as tap_config:
+            json.dump(self.config, tap_config, indent=2)
 
     def get_authorization(self):
         client_id = self.config.get('client_id')
@@ -48,6 +57,14 @@ class RingCentralClient:
 
         response.raise_for_status()
         json = response.json()
+
+        self.write_config(
+            {
+                'access_token': json['access_token'],
+                'refresh_token': json['refresh_token']
+            }
+        )
+
         return json['refresh_token'], json['access_token']
 
     @backoff.on_exception(backoff.expo,

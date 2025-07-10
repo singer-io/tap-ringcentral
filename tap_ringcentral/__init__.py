@@ -104,7 +104,7 @@ def main():
         'start_date'
     ])
 
-    client = RingCentralClient(args.config)
+    client = RingCentralClient(args.config, args.config_path)
 
     runner = RingCentralRunner(args, client)
 
