@@ -7,11 +7,18 @@ import singer
 import singer.metrics
 
 from requests.auth import HTTPBasicAuth
+from datetime import datetime, timedelta
+
 
 LOGGER = singer.get_logger()  # noqa
 
 
 class APIException(Exception):
+    pass
+
+
+class AuthFailedException(APIException):
+    """Raised when authentication fails irrecoverably"""
     pass
 
 
@@ -24,15 +31,38 @@ class RingCentralClient:
         self.config_path = config_path
         self.base_url = self.config.get('api_url')
 
-        self.refresh_token, self.access_token = self.get_authorization()
+        self.refresh_token = self.config.get('refresh_token')
+        self.access_token = self.config.get('access_token')
+    
+        self.ensure_authorization()
 
     def write_config(self, data):
-        '''
-        Updates the provided filepath with json format of the `data` object
-        '''
         self.config.update(data)
         with open(self.config_path, "w") as tap_config:
             json.dump(self.config, tap_config, indent=2)
+
+    def is_refresh_token_expired(self):
+        expires_at = self.config.get('refresh_token_expires_at')
+        if not expires_at:
+            return True
+        return datetime.now() >= datetime.fromisoformat(expires_at)
+
+    def is_access_token_expired(self):
+        expires_at = self.config.get('access_token_expires_at')
+        if not expires_at:
+            return True
+        return datetime.now() >= datetime.fromisoformat(expires_at)
+
+    def ensure_authorization(self):
+        if self.is_refresh_token_expired():
+            LOGGER.error(
+                "Authentication failed: your refresh token has expired and must be rotated. "
+                "Please re-authenticate to obtain a new refresh token."
+            )
+            raise AuthFailedException("Refresh token expired - auth failed")
+
+        if self.is_access_token_expired():
+            self.get_authorization()
 
     def get_authorization(self):
         client_id = self.config.get('client_id')
@@ -56,11 +86,23 @@ class RingCentralClient:
             data=payload)
 
         response.raise_for_status()
-        json = response.json()
+        data = response.json()
 
-        self.write_config({'refresh_token': json['refresh_token']})
+        now = datetime.now()
+        access_token_expires_at = (now + timedelta(seconds=data['expires_in'])).isoformat()
+        refresh_token_expires_at = (now + timedelta(seconds=data['refresh_token_expires_in'])).isoformat()
 
-        return json['refresh_token'], json['access_token']
+        self.access_token = data['access_token']
+        self.refresh_token = data['refresh_token']
+
+        self.write_config({
+            'access_token': data['access_token'],
+            'expires_in': data['expires_in'],
+            'access_token_expires_at': access_token_expires_at,
+            'refresh_token': data['refresh_token'],
+            'refresh_token_expires_in': data['refresh_token_expires_in'],
+            'refresh_token_expires_at': refresh_token_expires_at
+        })
 
     @backoff.on_exception(backoff.expo,
                           APIException,
