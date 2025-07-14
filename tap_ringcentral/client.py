@@ -9,7 +9,6 @@ import singer.metrics
 from requests.auth import HTTPBasicAuth
 from datetime import datetime, timedelta
 
-
 LOGGER = singer.get_logger()  # noqa
 
 
@@ -56,8 +55,8 @@ class RingCentralClient:
     def ensure_authorization(self):
         if self.is_refresh_token_expired():
             LOGGER.error(
-                "Authentication failed: your refresh token has expired and must be rotated. "
-                "Please re-authenticate to obtain a new refresh token."
+                "Authentication failed: refresh token has expired and must be rotated. "
+                "Re-authenticate to obtain a new refresh token."
             )
             raise AuthFailedException("Refresh token expired - auth failed")
 
