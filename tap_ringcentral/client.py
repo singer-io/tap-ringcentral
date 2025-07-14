@@ -29,7 +29,8 @@ class RingCentralClient:
         self.config = config
         self.config_path = config_path
         self.base_url = self.config.get('api_url')
-        self.access_token = self.get_authorization()
+
+        self.refresh_token, self.access_token = self.get_authorization()
 
     def write_config(self, data):
         self.config.update(data)
@@ -59,10 +60,10 @@ class RingCentralClient:
 
         if response.status_code == 400:
             LOGGER.error(
-                "Authentication failed: refresh token has expired and must be rotated. "
-                "Re-authenticate to obtain a new refresh token."
+                'Authentication failed: refresh token has expired and must be rotated. '
+                'Re-authenticate to obtain a new refresh token.'
             )
-            raise AuthFailedException("Refresh token expired - auth failed")
+            raise AuthFailedException('Refresh token expired - auth failed')
 
         response.raise_for_status()
         data = response.json()
@@ -70,7 +71,7 @@ class RingCentralClient:
         if data['refresh_token_expires_in'] <= 86400:  # If refresh_token is going to expire in a day, rotate it.
             self.write_config({'refresh_token': data['refresh_token']})
 
-        return data['access_token']
+        return data['refresh_token'], data['access_token']
 
     @backoff.on_exception(backoff.expo,
                           APIException,
