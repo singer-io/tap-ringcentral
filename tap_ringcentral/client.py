@@ -42,8 +42,6 @@ class RingCentralClient:
 
     def is_refresh_token_expired(self):
         expires_at = self.config.get('refresh_token_expires_at')
-        if not expires_at:
-            return True
         return datetime.now() >= datetime.fromisoformat(expires_at)
 
     def is_access_token_expired(self):
@@ -53,6 +51,9 @@ class RingCentralClient:
         return datetime.now() >= datetime.fromisoformat(expires_at)
 
     def ensure_authorization(self):
+        if 'refresh_token_expires_at' not in self.config:
+            self.get_authorization()
+            return
         if self.is_refresh_token_expired():
             LOGGER.error(
                 "Authentication failed: refresh token has expired and must be rotated. "
