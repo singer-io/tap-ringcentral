@@ -29,40 +29,12 @@ class RingCentralClient:
         self.config = config
         self.config_path = config_path
         self.base_url = self.config.get('api_url')
-
-        self.refresh_token = self.config.get('refresh_token')
-        self.access_token = self.config.get('access_token')
-    
-        self.ensure_authorization()
+        self.access_token = self.get_authorization()
 
     def write_config(self, data):
         self.config.update(data)
         with open(self.config_path, "w") as tap_config:
             json.dump(self.config, tap_config, indent=2)
-
-    def is_refresh_token_expired(self):
-        expires_at = self.config.get('refresh_token_expires_at')
-        return datetime.now() >= datetime.fromisoformat(expires_at)
-
-    def is_access_token_expired(self):
-        expires_at = self.config.get('access_token_expires_at')
-        if not expires_at:
-            return True
-        return datetime.now() >= datetime.fromisoformat(expires_at)
-
-    def ensure_authorization(self):
-        if 'refresh_token_expires_at' not in self.config:
-            self.get_authorization()
-            return
-        if self.is_refresh_token_expired():
-            LOGGER.error(
-                "Authentication failed: refresh token has expired and must be rotated. "
-                "Re-authenticate to obtain a new refresh token."
-            )
-            raise AuthFailedException("Refresh token expired - auth failed")
-
-        if self.is_access_token_expired():
-            self.get_authorization()
 
     def get_authorization(self):
         client_id = self.config.get('client_id')
@@ -85,24 +57,20 @@ class RingCentralClient:
             headers=headers,
             data=payload)
 
+        if response.status_code == 400:
+            LOGGER.error(
+                "Authentication failed: refresh token has expired and must be rotated. "
+                "Re-authenticate to obtain a new refresh token."
+            )
+            raise AuthFailedException("Refresh token expired - auth failed")
+
         response.raise_for_status()
         data = response.json()
 
-        now = datetime.now()
-        access_token_expires_at = (now + timedelta(seconds=data['expires_in'])).isoformat()
-        refresh_token_expires_at = (now + timedelta(seconds=data['refresh_token_expires_in'])).isoformat()
+        if data['refresh_token_expires_in'] <= 86400:  # If refresh_token is going to expire in a day, rotate it.
+            self.write_config({'refresh_token': data['refresh_token']})
 
-        self.access_token = data['access_token']
-        self.refresh_token = data['refresh_token']
-
-        self.write_config({
-            'access_token': data['access_token'],
-            'expires_in': data['expires_in'],
-            'access_token_expires_at': access_token_expires_at,
-            'refresh_token': data['refresh_token'],
-            'refresh_token_expires_in': data['refresh_token_expires_in'],
-            'refresh_token_expires_at': refresh_token_expires_at
-        })
+        return data['access_token']
 
     @backoff.on_exception(backoff.expo,
                           APIException,
