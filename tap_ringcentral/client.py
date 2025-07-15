@@ -59,11 +59,9 @@ class RingCentralClient:
 
         if response.status_code == 400 and 'invalid_grant' in response.text:
             LOGGER.error(
-                'Authentication failed: refresh token is probably expired, invalid, revoked or malformed. '
-                'Re-authenticate to obtain a new refresh token and restore access. '
                 f'Response: {response.status_code} - {response.text}'
             )
-            raise AuthFailedException('Refresh token expired or invalid – auth failed')
+            raise AuthFailedException('Refresh token expired or invalid – auth failed. Re-authenticate to obtain a new refresh token and restore access.')
 
         response.raise_for_status()
         data = response.json()
