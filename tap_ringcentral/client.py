@@ -67,9 +67,8 @@ class RingCentralClient:
         response.raise_for_status()
         data = response.json()
 
-        # Rotate the refresh token if it’s due to expire within the next 24 hours (86400 seconds)
-        if data['refresh_token_expires_in'] <= 86400:
-            self.write_config({'refresh_token': data['refresh_token']})
+        # Rotate refresh_token on every refresh: each new access_token (3600s) invalidates the prior refresh_token.
+        self.write_config({'refresh_token': data['refresh_token']})
 
         return data['refresh_token'], data['access_token']
 
