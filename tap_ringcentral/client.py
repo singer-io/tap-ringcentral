@@ -7,7 +7,6 @@ import singer
 import singer.metrics
 
 from requests.auth import HTTPBasicAuth
-from datetime import datetime, timedelta
 
 LOGGER = singer.get_logger()  # noqa
 
