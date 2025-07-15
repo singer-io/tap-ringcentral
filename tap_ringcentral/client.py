@@ -58,17 +58,18 @@ class RingCentralClient:
             headers=headers,
             data=payload)
 
-        if response.status_code == 400:
+        if response.status_code == 400 and 'invalid_grant' in response.text:
             LOGGER.error(
-                'Authentication failed: refresh token has expired and must be rotated. '
-                'Re-authenticate to obtain a new refresh token.'
+                'Authentication failed: refresh token is probably expired, invalid, revoked or malformed. '
+                'Re-authenticate to obtain a new refresh token and restore access.'
             )
-            raise AuthFailedException('Refresh token expired - auth failed')
+            raise AuthFailedException('Refresh token expired or invalid – auth failed')
 
         response.raise_for_status()
         data = response.json()
 
-        if data['refresh_token_expires_in'] <= 86400:  # If refresh_token is going to expire in a day, rotate it.
+        # Rotate the refresh token if it’s due to expire within the next 24 hours (86400 seconds)
+        if data['refresh_token_expires_in'] <= 86400:
             self.write_config({'refresh_token': data['refresh_token']})
 
         return data['refresh_token'], data['access_token']
