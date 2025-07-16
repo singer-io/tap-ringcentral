@@ -1,7 +1,7 @@
 import os
 import json
 from singer import metadata
-from tap_ringcentral.streams import STREAMS
+from tap_ringcentral.streams import AVAILABLE_STREAMS
 
 
 def get_abs_path(path):
@@ -20,7 +20,7 @@ def get_schemas():
     schemas = {}
     field_metadata = {}
 
-    for stream_name, stream_metadata in STREAMS.items():
+    for stream_name, stream_metadata in AVAILABLE_STREAMS.items():
 
         schema_path = get_abs_path("schemas/{}.json".format(stream_name))
         with open(schema_path, "r") as file:

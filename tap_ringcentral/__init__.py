@@ -9,8 +9,7 @@ import json
 from tap_ringcentral.discover import discover
 
 from tap_ringcentral.client import RingCentralClient
-from tap_ringcentral.streams import STREAMS
-from tap_ringcentral.streams.base import is_stream_selected
+from tap_ringcentral.streams import AVAILABLE_STREAMS
 
 LOGGER = singer.get_logger()  # noqa
 
@@ -21,7 +20,7 @@ class RingCentralRunner:
         self.state = args.state
         self.catalog = args.catalog
         self.client = client
-        self.available_streams = STREAMS.values()
+        self.available_streams = AVAILABLE_STREAMS
 
     def save_state(self, state):
         if not state:
@@ -35,60 +34,24 @@ class RingCentralRunner:
         json.dump(catalog.to_dict(), sys.stdout, indent=2)
         LOGGER.info("Finished discover")
 
-    def get_streams_to_replicate(self):
-        streams = []
-
-        if not self.catalog:
-            return streams
-
-        for stream_catalog in self.catalog.streams:
-            if not is_stream_selected(stream_catalog):
-                LOGGER.info("'{}' is not marked selected, skipping."
-                            .format(stream_catalog.stream))
-                continue
-
-            for available_stream in self.available_streams:
-                if available_stream.matches_catalog(stream_catalog):
-                    if not available_stream.requirements_met(self.catalog):
-                        raise RuntimeError(
-                            "{} requires that the following are "
-                            "selected: {}".format(
-                                stream_catalog.stream,
-                                ",".join(available_stream.REQUIRES),
-                            )
-                        )
-                    to_add = available_stream(
-                        self.config, self.state, stream_catalog, self.client
-                    )
-                    streams.append(to_add)
-
-        return streams
 
     # Sync the streams in the order specified in the
     # streams/__init__.py list of AVAILABLE_STREAMS
     def do_sync(self):
         LOGGER.info("Starting sync.")
 
-        streams = self.get_streams_to_replicate()
-        stream_map = {s.NAME: s for s in streams}
-
-        for available_stream in STREAMS.values():
-            if available_stream.NAME not in stream_map:
-                continue
-
-            stream = stream_map[available_stream.NAME]
+        for stream_to_sync in self.catalog.get_selected_streams(self.state):
+            stream_obj = self.available_streams[stream_to_sync.stream](
+                        self.config, self.state, stream_to_sync, self.client
+                    )
             try:
-                stream.state = self.state
-                stream.sync()
-                self.state = stream.state
-            except OSError as e:
-                LOGGER.error(str(e))
-                exit(e.errno)
-
+                stream_obj.state = self.state
+                stream_obj.sync()
+                self.state = stream_obj.state
             except Exception as e:
                 LOGGER.error(str(e))
                 LOGGER.error('Failed to sync endpoint {}, moving on!'
-                             .format(stream.TABLE))
+                             .format(stream_obj.TABLE))
                 raise e
 
         self.save_state(self.state)
