@@ -17,7 +17,7 @@ jobs:
           name: 'JSON Validator'
           command: |
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
-            stitch-validate-json /usr/local/share/virtualenvs/tap-ringcentral/lib/python3.5/site-packages/tap_ringcentral/schemas/*.json
+            stitch-validate-json /usr/local/share/virtualenvs/tap-ringcentral/lib/python3.9/site-packages/tap_ringcentral/schemas/*.json
 workflows:
   version: 2
   commit:
