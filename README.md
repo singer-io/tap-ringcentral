@@ -27,7 +27,7 @@ pip install .
 
 ##### Overview
 - Create a new application and an associated sandbox account
-- Note your `client_id`, `client_secret`, `username`, and `password` (used in the config.json file specified below)
+- Note your `client_id`, `client_secret`, and `refresh_token` (used in the config.json file specified below)
 
 ##### Creating an application
 To create a new application, navigate to the [RingCentral Developer Console](https://developers.ringcentral.com/my-account.html#/applications) and click `Create App`. Make the application "Private" and select "Server-only (No UI)" as the Platform Type.
