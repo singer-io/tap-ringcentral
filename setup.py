@@ -3,14 +3,16 @@
 from setuptools import setup, find_packages
 
 setup(name='tap-ringcentral',
-      version='1.0.1',
+      version='1.1.0',
       description='Singer.io tap for extracting data from the RingCentral API',
       author='Fishtown Analytics',
       url='http://fishtownanalytics.com',
       classifiers=['Programming Language :: Python :: 3 :: Only'],
       py_modules=['tap_ringcentral'],
       install_requires=[
-          'tap-framework==0.0.4',
+          'singer-python==6.1.1',
+          'backoff==2.2.1',
+          'requests==2.32.4',
       ],
       entry_points='''
           [console_scripts]

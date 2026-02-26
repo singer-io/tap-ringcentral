@@ -1,4 +1,6 @@
+import inspect
 import math
+import os
 import pytz
 import singer
 import singer.utils
@@ -12,13 +14,35 @@ from tap_ringcentral.config import get_config_start_date
 from tap_ringcentral.state import incorporate, save_state, \
     get_last_record_value_for_table
 
-from tap_framework.streams import BaseStream as base
+from singer import metadata as meta
 
 LOGGER = singer.get_logger()
 
 
-class BaseStream(base):
+class BaseStream:
     KEY_PROPERTIES = ['id']
+    TABLE = None
+    REQUIRES = []
+
+    def __init__(self, config, state, catalog, client):
+        self.config = config
+        self.state = state
+        self.catalog = catalog
+        self.client = client
+        self.substreams = []
+
+    def get_class_path(self):
+        return os.path.dirname(inspect.getfile(self.__class__))
+
+    def load_schema_by_name(self, name):
+        return singer.utils.load_json(
+            os.path.normpath(
+                os.path.join(
+                    self.get_class_path(),
+                    '../schemas/{}.json'.format(name))))
+
+    def get_schema(self):
+        return self.load_schema_by_name(self.TABLE)
 
     def get_params(self, page=1):
         return {
@@ -31,6 +55,41 @@ class BaseStream(base):
 
     def get_url(self, path):
         return '{}{}'.format(BASE_URL, path)
+
+    def get_stream_data(self, result, contact_id):
+        xf = []
+        for record in result['records']:
+            record_xf = self.transform_record(record)
+            record_xf['_contact_id'] = contact_id
+            xf.append(record_xf)
+        return xf
+
+    def transform_record(self, record):
+        with singer.Transformer() as tx:
+            metadata = {}
+
+            if self.catalog.metadata is not None:
+                metadata = singer.metadata.to_map(self.catalog.metadata)
+
+            return tx.transform(
+                record,
+                self.catalog.schema.to_dict(),
+                metadata)
+
+    def write_schema(self):
+        singer.write_schema(
+            self.catalog.stream,
+            self.catalog.schema.to_dict(),
+            key_properties=self.catalog.key_properties)
+
+    def sync(self):
+        LOGGER.info('Syncing stream {} with {}'
+                    .format(self.catalog.tap_stream_id,
+                            self.__class__.__name__))
+
+        self.write_schema()
+
+        return self.sync_data()
 
     def sync_data(self):
         table = self.TABLE
