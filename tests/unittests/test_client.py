@@ -1,16 +1,17 @@
+import json as json_mod
 import unittest
 from unittest.mock import patch, MagicMock
 import requests
 from tap_ringcentral.client import RingCentralClient, APIException, AuthFailedException
 
 
-class Mockresponse:
+class MockResponse:
     """Mock response object class."""
-    def __init__(self, status_code, json, raise_error, headers={}, text=None):
+    def __init__(self, status_code, json, raise_error, headers=None, text=None):
         self.status_code = status_code
         self.raise_error = raise_error
-        self.text = json if text is None else text
-        self.headers = headers
+        self.text = json_mod.dumps(json) if text is None else text
+        self.headers = headers or {}
         self._json = json
 
     def raise_for_status(self):
@@ -23,9 +24,9 @@ class Mockresponse:
         return self._json
 
 
-def get_response(status_code, json={}, headers={}, raise_error=False, text=None):
+def get_response(status_code, json=None, headers=None, raise_error=False, text=None):
     """Returns required mock response."""
-    return Mockresponse(status_code, json, raise_error, headers, text)
+    return MockResponse(status_code, json if json is not None else {}, raise_error, headers, text)
 
 
 class TestGetAuthorization(unittest.TestCase):

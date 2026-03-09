@@ -1,7 +1,7 @@
 # Changelog
 
 ## 1.2.0
-  * Bumps singer-python, requests dependency [#25] (https://github.com/singer-io/tap-ringcentral/pull/25)
+  * Bumps singer-python, requests dependency [#25](https://github.com/singer-io/tap-ringcentral/pull/25)
 ## 1.1.0
   * Implement OAuth 2.0 Authentication to resolve authorization [#18] (https://github.com/singer-io/tap-ringcentral/pull/18)
   * Libraries upgrades, Tap framework replacement, Discovery mode [#17] (https://github.com/singer-io/tap-ringcentral/pull/17)
