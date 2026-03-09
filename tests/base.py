@@ -41,7 +41,7 @@ class RingCentralBaseTest:
         return {
             "contacts": {
                 cls.PRIMARY_KEYS: {"id"},
-                cls.REPLICATION_METHOD: None,
+                cls.REPLICATION_METHOD: "FULL_TABLE",
                 cls.REPLICATION_KEYS: set(),
                 cls.OBEYS_START_DATE: False,
             },

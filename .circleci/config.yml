@@ -22,7 +22,7 @@ jobs:
           name: 'Unit Tests + Integration Tests'
           command: |
             source /usr/local/share/virtualenvs/tap-ringcentral/bin/activate
-            python -m pytest tests/ -v
+            python -m unittest discover -s tests -v
 workflows:
   version: 2
   commit:
