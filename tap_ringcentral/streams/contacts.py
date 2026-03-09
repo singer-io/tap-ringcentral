@@ -10,6 +10,7 @@ LOGGER = singer.get_logger()  # noqa
 class ContactsStream(BaseStream):
     NAME = 'ContactsStream'
     KEY_PROPERTIES = ['id']
+    REPLICATION_METHOD = 'FULL_TABLE'
     API_METHOD = 'GET'
     TABLE = 'contacts'
 
