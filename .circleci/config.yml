@@ -18,6 +18,11 @@ jobs:
           command: |
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             stitch-validate-json tap_ringcentral/schemas/*.json
+      - run:
+          name: 'Unit Tests + Integration Tests'
+          command: |
+            source /usr/local/share/virtualenvs/tap-ringcentral/bin/activate
+            python -m pytest tests/ -v
 workflows:
   version: 2
   commit:
