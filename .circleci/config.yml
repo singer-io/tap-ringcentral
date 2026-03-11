@@ -8,16 +8,21 @@ jobs:
       - run:
           name: 'Setup virtual env'
           command: |
-            uv venv --python 3.9 /usr/local/share/virtualenvs/tap-ringcentral
+            uv venv --python 3.12 /usr/local/share/virtualenvs/tap-ringcentral
             source /usr/local/share/virtualenvs/tap-ringcentral/bin/activate
-            uv pip install -U 'pip<19.2' 'setuptools<51.0.0'
+            uv pip install -U pip setuptools
             uv pip install .
       - add_ssh_keys
       - run:
           name: 'JSON Validator'
           command: |
-            source /usr/local/share/virtualenvs/tap-ringcentral/bin/activate
+            source /usr/local/share/virtualenvs/tap-tester/bin/activate
             stitch-validate-json tap_ringcentral/schemas/*.json
+      - run:
+          name: 'Unit Tests + Integration Tests'
+          command: |
+            source /usr/local/share/virtualenvs/tap-ringcentral/bin/activate
+            python -m unittest discover -s tests -v
 workflows:
   version: 2
   commit:
