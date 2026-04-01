@@ -15,7 +15,7 @@ class CompanyCallLogStream(ContactBaseStream):
 
     @property
     def api_path(self):
-        return '/restapi/v1.0/account/~/call-log'
+        return '/restapi/v1.0/account/~/call-log?view=Detailed&withRecording=true'
 
     def sync_data_for_period(self, date, interval):
         self.sync_data_for_extension(date, interval, None)
