@@ -1,6 +1,7 @@
 import inspect
 import math
 import os
+import re
 import pytz
 import singer
 import singer.utils
@@ -11,6 +12,7 @@ from datetime import timedelta, datetime
 
 import tap_ringcentral.cache
 from tap_ringcentral.config import get_config_start_date
+from tap_ringcentral.client import RingCentralForbiddenError
 from tap_ringcentral.state import incorporate, save_state, \
     get_last_record_value_for_table
 
@@ -23,8 +25,9 @@ class BaseStream:
     KEY_PROPERTIES = ['id']
     TABLE = None
     REQUIRES = []
+    parent = None
 
-    def __init__(self, config, state, catalog, client):
+    def __init__(self, config=None, state=None, catalog=None, client=None):
         self.config = config
         self.state = state
         self.catalog = catalog
@@ -55,6 +58,31 @@ class BaseStream:
 
     def get_url(self, path):
         return '{}{}'.format(BASE_URL, path)
+
+    def check_access(self) -> bool:
+        """
+        Verify that the API credentials have read access to this stream.
+        Returns True if accessible, False if a 403 Forbidden error is raised.
+        Child streams (where parent is set) always return True; their
+        removal from the catalog is handled by _prune_inaccessible_children.
+        """
+        if self.parent:
+            return True
+
+        url_template = "{}{}".format(self.client.base_url, self.api_path)
+        # Replace any {placeholder} (e.g. {extensionId}) with '~' for the probe
+        url = re.sub(r'\{[^}]+\}', '~', url_template)
+
+        try:
+            self.client.make_request(url, self.API_METHOD, params={"page": 1, "perPage": 1})
+            return True
+        except RingCentralForbiddenError as exc:
+            LOGGER.warning(
+                "Permission Error: Stream '%s' - %s",
+                self.__class__.__name__,
+                exc,
+            )
+            return False
 
     def get_stream_data(self, result, contact_id):
         xf = []

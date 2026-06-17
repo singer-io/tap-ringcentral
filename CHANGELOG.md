@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3.0
+  * Exclude un-authorized streams from the catalog.
+
 ## 1.2.0
   * Bumps singer-python, requests dependency [#25](https://github.com/singer-io/tap-ringcentral/pull/25)
 ## 1.1.0
