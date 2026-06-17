@@ -64,7 +64,7 @@ def discover(client=None) -> Catalog:
     that cannot be read are excluded from the returned catalog.
     """
     schemas, field_metadata = get_schemas()
-    if client:  # Added client check since mock-integration tests are tightly dependent on discover call w/o client
+    if client is not None:  # Added client check since mock-integration tests are tightly dependent on discover call w/o client
         _apply_access_checks(client, schemas, field_metadata)
 
     catalog = Catalog([])
