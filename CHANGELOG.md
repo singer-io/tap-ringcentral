@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.2.1
+  * Bump requests version to 2.34.2 to address security vulnerability [#28](https://github.com/singer-io/tap-ringcentral/pull/28)
+
 ## 1.2.0
   * Bumps singer-python, requests dependency [#25](https://github.com/singer-io/tap-ringcentral/pull/25)
 ## 1.1.0
