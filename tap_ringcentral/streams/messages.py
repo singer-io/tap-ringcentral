@@ -11,6 +11,7 @@ class MessageStream(ContactBaseStream):
     KEY_PROPERTIES = ['id']
     API_METHOD = 'GET'
     TABLE = 'messages'
+    params = {'page': 1, 'perPage': 100, 'showDeleted': True}
 
     @property
     def api_path(self):

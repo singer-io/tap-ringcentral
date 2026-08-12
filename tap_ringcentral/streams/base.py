@@ -73,8 +73,10 @@ class BaseStream:
         # Replace any {placeholder} (e.g. {extensionId}) with '~' for the probe
         url = re.sub(r'\{[^}]+\}', '~', url_template)
 
+        params = self.params if hasattr(self, 'params') else {"page": 1, "perPage": 1}
+
         try:
-            self.client.make_request(url, self.API_METHOD, params={"page": 1, "perPage": 1})
+            self.client.make_request(url, self.API_METHOD, params=params)
             return True
         except RingCentralForbiddenError as exc:
             LOGGER.warning(
@@ -151,6 +153,7 @@ class BaseStream:
 
         return self.state
 
+
 class ContactBaseStream(BaseStream):
     KEY_PROPERTIES = ['id']
 
@@ -199,42 +202,50 @@ class ContactBaseStream(BaseStream):
     def sync_data_for_extension(self, date, interval, extensionId):
         table = self.TABLE
 
-        page = 1
-        per_page = 100
+        try:
+            page = 1
+            per_page = 100
 
-        date_from = date.isoformat()
-        date_to = (date + interval).isoformat()
+            date_from = date.isoformat()
+            date_to = (date + interval).isoformat()
 
-        while True:
-            LOGGER.info('Syncing {} for contact={} from {} to {}, page={}'.format(
+            while True:
+                LOGGER.info('Syncing {} for contact={} from {} to {}, page={}'.format(
+                    table,
+                    extensionId,
+                    date_from,
+                    date_to,
+                    page
+                ))
+
+                params = self.get_params(date_from, date_to, page, per_page)
+                body = self.get_body()
+
+                url = "{}{}".format(
+                    self.client.base_url,
+                    self.api_path.format(extensionId=extensionId)
+                )
+
+                # The API rate limits us pretty aggressively
+                time.sleep(5)
+
+                result = self.client.make_request(
+                    url, self.API_METHOD, params=params, body=body)
+
+                data = self.get_stream_data(result, extensionId)
+
+                with singer.metrics.record_counter(endpoint=table) as counter:
+                    singer.write_records(table, data)
+                    counter.increment(len(data))
+
+                if len(data) < per_page:
+                    break
+
+                page += 1
+        except RingCentralForbiddenError as e:
+            LOGGER.warning(
+                "Permission denied for stream '%s' on extension '%s': %s. Skipping this extension.",
                 table,
                 extensionId,
-                date_from,
-                date_to,
-                page
-            ))
-
-            params = self.get_params(date_from, date_to, page, per_page)
-            body = self.get_body()
-
-            url = "{}{}".format(
-                self.client.base_url,
-                self.api_path.format(extensionId=extensionId)
+                str(e)
             )
-
-            # The API rate limits us pretty aggressively
-            time.sleep(5)
-
-            result = self.client.make_request(
-                url, self.API_METHOD, params=params, body=body)
-
-            data = self.get_stream_data(result, extensionId)
-
-            with singer.metrics.record_counter(endpoint=table) as counter:
-                singer.write_records(table, data)
-                counter.increment(len(data))
-
-            if len(data) < per_page:
-                break
-
-            page += 1
