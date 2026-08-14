@@ -23,7 +23,7 @@ jobs:
           command: |
             source /usr/local/share/virtualenvs/tap-ringcentral/bin/activate
             uv pip install pytest coverage parameterized
-            coverage run -m pytest tests/unittests
+            coverage run --source=tap_ringcentral -m pytest tests/unittests
             coverage html
       - run:
           name: 'Coverage Report'
