@@ -7,6 +7,7 @@ import singer
 import singer.utils
 import singer.metrics
 import time
+from typing import ClassVar, Optional
 
 from datetime import timedelta, datetime
 
@@ -23,9 +24,12 @@ LOGGER = singer.get_logger()
 
 class BaseStream:
     KEY_PROPERTIES = ['id']
-    TABLE = None
-    REQUIRES = []
-    parent = None
+    TABLE: Optional[str] = None
+    REQUIRES: ClassVar[list] = []
+    parent: Optional[str] = None
+    # Subclasses should override these attributes
+    api_path: str
+    API_METHOD: ClassVar[str]
 
     def __init__(self, config=None, state=None, catalog=None, client=None):
         self.config = config
@@ -57,7 +61,7 @@ class BaseStream:
         return {}
 
     def get_url(self, path):
-        return '{}{}'.format(BASE_URL, path)
+        return '{}{}'.format(self.client.base_url, path)
 
     def check_access(self) -> bool:
         """
@@ -80,9 +84,9 @@ class BaseStream:
             return True
         except RingCentralForbiddenError as exc:
             LOGGER.warning(
-                "Permission Error: Stream '%s' - %s",
+                "Unauthorized Stream: %s, excluding from catalog. HTTP-Error-Message: '%s'",
                 self.__class__.__name__,
-                exc,
+                str(exc)
             )
             return False
 
