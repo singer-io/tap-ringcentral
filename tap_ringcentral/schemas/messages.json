@@ -5,54 +5,158 @@
             "type": ["null", "integer"]
         },
         "uri": {
-            "type": "string"
+            "type": ["null", "string"]
         },
         "id": {
-            "type": "string"
+            "type": ["null", "string"]
         },
-        "to": {},
+        "to": {
+            "type": ["null", "array"],
+            "items": {
+                "type": ["null", "object"],
+                "properties": {
+                    "extensionNumber": {
+                        "type": ["null", "string"]
+                    },
+                    "target": {
+                        "type": ["null", "boolean"]
+                    },
+                    "messageStatus": {
+                        "type": ["null", "string"]
+                    },
+                    "faxErrorCode": {
+                        "type": ["null", "string"]
+                    },
+                    "recipientId": {
+                        "type": ["null", "string"]
+                    },
+                    "phoneNumber": {
+                        "type": ["null", "string"]
+                    },
+                    "location": {
+                        "type": ["null", "string"]
+                    },
+                    "name": {
+                        "type": ["null", "string"]
+                    },
+                    "extensionId": {
+                        "type": ["null", "string"]
+                    }
+                }
+            }
+        },
         "type": {
-            "type": "string"
+            "type": ["null", "string"]
         },
         "creationTime": {
-            "type": "string",
+            "type": ["null", "string"],
             "format": "date-time"
         },
         "readStatus": {
-            "type": "string"
+            "type": ["null", "string"]
         },
         "priority": {
-            "type": "string"
+            "type": ["null", "string"]
         },
-        "conversation": {},
-        "conversationId": {},
-        "from": {},
-        "smsSendingAttemptsCount": {},
-        "subject": {},
-        "vmTranscriptionStatus": {},
-        "attachments": {},
+        "conversation": {
+            "type": ["null", "object"],
+            "properties": {
+                "id": {
+                    "type": ["null", "string"]
+                },
+                "uri": {
+                    "type": ["null", "string"]
+                }
+            }
+        },
+        "conversationId": {
+            "type": ["null", "integer"]
+        },
+        "from": {
+            "type": ["null", "object"],
+            "properties": {
+                "extensionNumber": {
+                    "type": ["null", "string"]
+                },
+                "phoneNumber": {
+                    "type": ["null", "string"]
+                },
+                "location": {
+                    "type": ["null", "string"]
+                },
+                "name": {
+                    "type": ["null", "string"]
+                },
+                "extensionId": {
+                    "type": ["null", "string"]
+                }
+            }
+        },
+        "smsSendingAttemptsCount": {
+            "type": ["null", "integer"]
+        },
+        "subject": {
+            "type": ["null", "string"]
+        },
+        "vmTranscriptionStatus": {
+            "type": ["null", "string"]
+        },
+        "attachments": {
+            "type": ["null", "array"],
+            "items": {
+                "type": ["null", "object"],
+                "properties": {
+                    "id": {
+                        "type": ["null", "integer"]
+                    },
+                    "type": {
+                        "type": ["null", "string"]
+                    },
+                    "vmDuration": {
+                        "type": ["null", "integer"]
+                    },
+                    "size": {
+                        "type": ["null", "integer"]
+                    },
+                    "height": {
+                        "type": ["null", "integer"]
+                    },
+                    "width": {
+                        "type": ["null", "integer"]
+                    },
+                    "uri": {
+                        "type": ["null", "string"]
+                    },
+                    "fileName": {
+                        "type": ["null", "string"]
+                    },
+                    "contentType": {
+                        "type": ["null", "string"]
+                    }
+                }
+            }
+        },
         "direction": {
-            "type": "string"
+            "type": ["null", "string"]
         },
-        "deleted": {},
         "availability": {
-            "type": "string"
+            "type": ["null", "string"]
         },
         "messageStatus": {
-            "type": "string"
+            "type": ["null", "string"]
         },
         "faxResolution": {
-            "type": "string"
+            "type": ["null", "string"]
         },
         "faxPageCount": {
-            "type": "integer"
+            "type": ["null", "integer"]
         },
         "lastModifiedTime": {
-            "type": "string",
+            "type": ["null", "string"],
             "format": "date-time"
         },
         "coverIndex": {
-            "type": "integer"
+            "type": ["null", "integer"]
         }
     }
 }
