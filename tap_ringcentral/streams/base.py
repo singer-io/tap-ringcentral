@@ -90,7 +90,7 @@ class BaseStream:
             )
             return False
 
-    def get_stream_data(self, result, contact_id):
+    def get_stream_data(self, result, contact_id=None):
         xf = []
         for record in result['records']:
             record_xf = self.transform_record(record)
@@ -195,7 +195,7 @@ class ContactBaseStream(BaseStream):
             "showDeleted": True,
         }
 
-    def get_stream_data(self, result, contact_id):
+    def get_stream_data(self, result, contact_id=None):
         xf = []
         for record in result['records']:
             record_xf = self.transform_record(record)
