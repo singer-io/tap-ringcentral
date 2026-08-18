@@ -3,7 +3,7 @@
 from setuptools import setup, find_packages
 
 setup(name='tap-ringcentral',
-      version='1.2.1',
+      version='1.3.0',
       description='Singer.io tap for extracting data from the RingCentral API',
       author='Fishtown Analytics',
       url='http://fishtownanalytics.com',

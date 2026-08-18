@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3.0
+  * Exclude unauthorized streams from the catalog [#26](https://github.com/singer-io/tap-ringcentral/pull/26)
+
 ## 1.2.1
   * Bump requests version to 2.34.2 to address security vulnerability [#27](https://github.com/singer-io/tap-ringcentral/pull/27)
 

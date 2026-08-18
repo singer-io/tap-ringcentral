@@ -30,7 +30,7 @@ class RingCentralRunner:
 
     def do_discover(self):
         LOGGER.info("Starting discovery")
-        catalog = discover()
+        catalog = discover(self.client)
         json.dump(catalog.to_dict(), sys.stdout, indent=2)
         LOGGER.info("Finished discover")
 

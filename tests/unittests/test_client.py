@@ -3,6 +3,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 import requests
 from tap_ringcentral.client import RingCentralClient, APIException, AuthFailedException
+from tap_ringcentral.client import RingCentralForbiddenError
 
 
 class MockResponse:
@@ -218,24 +219,21 @@ class TestMakeRequest(unittest.TestCase):
         # Verify request was called 3 times (initial API + auth refresh + retry)
         self.assertEqual(mock_request.call_count, 3)
 
-    def test_forbidden_error_triggers_token_refresh(self, mock_request, mock_json_dump, mock_open):
-        """Test case for 403 Forbidden error triggers token refresh and successful retry."""
+    def test_forbidden_error_raises_forbidden_error(self, mock_request, mock_json_dump, mock_open):
+        """Test case for 403 Forbidden error raises RingCentralForbiddenError immediately
+        (no token refresh, no retry — 403 signals a permissions issue, not auth expiry)."""
         client = self._create_client(mock_request)
 
         mock_response_403 = MagicMock()
         mock_response_403.status_code = 403
         mock_response_403.text = "Forbidden"
 
-        mock_request.side_effect = [
-            mock_response_403,  # make_request API call returns 403
-            self.auth_response,  # get_authorization refresh call
-            get_response(200, json={"records": ["retried"]}),  # retry succeeds after token refresh
-        ]
+        mock_request.return_value = mock_response_403
 
-        result = client.make_request(self.url, self.method)
-        self.assertEqual(result, {"records": ["retried"]})
-        # Verify request was called 3 times (initial API + auth refresh + retry)
-        self.assertEqual(mock_request.call_count, 3)
+        with self.assertRaises(RingCentralForbiddenError):
+            client.make_request(self.url, self.method)
+        # Only the single API call — no token-refresh or retry
+        self.assertEqual(mock_request.call_count, 1)
 
     def test_other_error_status_raises_api_exception(self, mock_request, mock_json_dump, mock_open):
         """Test case for non-200/429/401/403 error status raises APIException."""
