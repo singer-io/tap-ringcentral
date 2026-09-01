@@ -37,7 +37,7 @@ class TestContactBaseStreamSyncDataForPeriodWithContacts(unittest.TestCase):
             {"id": "ext2"},
         ]))
 
-        stream.sync_data_for_extension = MagicMock()
+        stream.sync_data_for_extension = MagicMock(return_value=1)
 
         date = datetime(2025, 1, 1, tzinfo=pytz.utc)
         interval = timedelta(days=7)

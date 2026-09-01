@@ -200,6 +200,10 @@ class TestContactsStream(unittest.TestCase):
         self.assertEqual(self.stream_class.KEY_PROPERTIES, ["id"])
         self.assertEqual(self.stream_class.API_METHOD, "GET")
 
+    def test_replication_metadata(self):
+        self.assertEqual(self.stream_class.REPLICATION_METHOD, "FULL_TABLE")
+        self.assertEqual(self.stream_class.REPLICATION_KEYS, [])
+
     def test_api_path(self):
         """Test that the api_path property returns the correct URL path."""
         stream = self.stream_class(self.config, self.state, self.mock_catalog, self.mock_client)
@@ -221,6 +225,11 @@ class TestCallLogStream(unittest.TestCase):
         self.assertEqual(self.stream_class.TABLE, "call_log")
         self.assertEqual(self.stream_class.KEY_PROPERTIES, ["id"])
         self.assertEqual(self.stream_class.API_METHOD, "GET")
+
+    def test_replication_metadata(self):
+        self.assertEqual(self.stream_class.REPLICATION_METHOD, "INCREMENTAL")
+        self.assertEqual(self.stream_class.REPLICATION_KEYS, ["processedUntil"])
+        self.assertEqual(self.stream_class.REQUIRES, ["contacts"])
 
     def test_api_path(self):
         """Test that the api_path property returns the correct URL path with extensionId placeholder."""
@@ -253,6 +262,11 @@ class TestCompanyCallLogStream(unittest.TestCase):
         self.assertEqual(self.stream_class.KEY_PROPERTIES, ["id"])
         self.assertEqual(self.stream_class.API_METHOD, "GET")
 
+    def test_replication_metadata(self):
+        self.assertEqual(self.stream_class.REPLICATION_METHOD, "INCREMENTAL")
+        self.assertEqual(self.stream_class.REPLICATION_KEYS, ["processedUntil"])
+        self.assertEqual(self.stream_class.REQUIRES, [])
+
     def test_api_path(self):
         """Test that the api_path property returns the correct URL path."""
         config = {
@@ -283,6 +297,11 @@ class TestMessageStream(unittest.TestCase):
         self.assertEqual(self.stream_class.TABLE, "messages")
         self.assertEqual(self.stream_class.KEY_PROPERTIES, ["id"])
         self.assertEqual(self.stream_class.API_METHOD, "GET")
+
+    def test_replication_metadata(self):
+        self.assertEqual(self.stream_class.REPLICATION_METHOD, "INCREMENTAL")
+        self.assertEqual(self.stream_class.REPLICATION_KEYS, ["processedUntil"])
+        self.assertEqual(self.stream_class.REQUIRES, ["contacts"])
 
     def test_api_path(self):
         """Test that the api_path property returns the correct URL path with extensionId placeholder."""

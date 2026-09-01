@@ -75,6 +75,28 @@ class TestRingCentralRunner(unittest.TestCase):
         mock_discover.assert_called_once_with(self.mock_client)
         mock_json_dump.assert_called_once()
 
+    def test_do_sync_sets_and_clears_currently_syncing(self):
+        """do_sync sets currently_syncing before each stream and clears it after."""
+        mock_stream_obj = MagicMock()
+        mock_stream_obj.TABLE = "contacts"
+        mock_stream_obj.state = self.state
+
+        mock_catalog_entry = MagicMock()
+        mock_catalog_entry.stream = "contacts"
+
+        self.mock_args.catalog = MagicMock()
+        self.mock_args.catalog.get_selected_streams.return_value = [mock_catalog_entry]
+
+        with patch.dict("tap_ringcentral.AVAILABLE_STREAMS", {"contacts": MagicMock(return_value=mock_stream_obj)}), \
+             patch("tap_ringcentral.__init__.singer.set_currently_syncing") as mock_set, \
+             patch("tap_ringcentral.__init__.singer.write_state"):
+            runner = RingCentralRunner(self.mock_args, self.mock_client)
+            runner.do_sync()
+
+        calls = [c.args[1] for c in mock_set.call_args_list]
+        self.assertIn("contacts", calls)
+        self.assertIn(None, calls)
+
     def test_do_sync_with_no_selected_streams(self):
         """Test do_sync when catalog has no selected streams."""
         self.mock_args.catalog = MagicMock()
@@ -83,8 +105,9 @@ class TestRingCentralRunner(unittest.TestCase):
         runner = RingCentralRunner(self.mock_args, self.mock_client)
         runner.do_sync()
 
-        # Should not raise any exception
-        self.mock_args.catalog.get_selected_streams.assert_called_once_with(self.state)
+        # Called once in _prefill_contacts_cache() and once in the main loop
+        self.assertEqual(self.mock_args.catalog.get_selected_streams.call_count, 2)
+        self.mock_args.catalog.get_selected_streams.assert_called_with(self.state)
 
     def test_do_sync_with_selected_streams(self):
         """Test do_sync syncs selected streams."""
@@ -199,3 +222,90 @@ class TestMainFunction(unittest.TestCase):
         # Neither should be called
         mock_runner.do_discover.assert_not_called()
         mock_runner.do_sync.assert_not_called()
+
+
+class TestPrefillContactsCache(unittest.TestCase):
+
+    def setUp(self):
+        self.config = {
+            "client_id": "test",
+            "client_secret": "test",
+            "refresh_token": "test",
+            "api_url": "https://platform.ringcentral.com",
+            "start_date": "2025-01-01T00:00:00Z",
+        }
+        self.state = {}
+        self.mock_client = MagicMock()
+        mock_args = MagicMock()
+        mock_args.config = self.config
+        mock_args.state = self.state
+        self.mock_args = mock_args
+
+    @patch("tap_ringcentral.cache.contacts", [])
+    @patch("tap_ringcentral.ContactsStream")
+    def test_prefills_cache_when_dependent_stream_selected_without_contacts(self, mock_contacts_cls):
+        """Cache is pre-filled when call_log is selected but contacts is not."""
+        mock_entry = MagicMock()
+        mock_entry.stream = "call_log"
+        self.mock_args.catalog = MagicMock()
+        self.mock_args.catalog.get_selected_streams.return_value = [mock_entry]
+
+        mock_fill = MagicMock()
+        mock_contacts_cls.return_value.fill_cache = mock_fill
+
+        with patch.dict("tap_ringcentral.AVAILABLE_STREAMS", {
+            "call_log": MagicMock(REQUIRES=["contacts"]),
+        }):
+            runner = RingCentralRunner(self.mock_args, self.mock_client)
+            runner._prefill_contacts_cache()
+
+        mock_fill.assert_called_once()
+
+    @patch("tap_ringcentral.cache.contacts", [])
+    @patch("tap_ringcentral.ContactsStream")
+    def test_no_prefill_when_contacts_is_selected(self, mock_contacts_cls):
+        """Cache is not pre-filled when contacts is in the selected streams."""
+        entries = [MagicMock(stream="contacts"), MagicMock(stream="call_log")]
+        self.mock_args.catalog = MagicMock()
+        self.mock_args.catalog.get_selected_streams.return_value = entries
+
+        with patch.dict("tap_ringcentral.AVAILABLE_STREAMS", {
+            "contacts": MagicMock(REQUIRES=[]),
+            "call_log": MagicMock(REQUIRES=["contacts"]),
+        }):
+            runner = RingCentralRunner(self.mock_args, self.mock_client)
+            runner._prefill_contacts_cache()
+
+        mock_contacts_cls.assert_not_called()
+
+    @patch("tap_ringcentral.ContactsStream")
+    def test_no_prefill_when_cache_already_populated(self, mock_contacts_cls):
+        """Cache is not pre-filled when already contains data."""
+        mock_entry = MagicMock(stream="call_log")
+        self.mock_args.catalog = MagicMock()
+        self.mock_args.catalog.get_selected_streams.return_value = [mock_entry]
+
+        with patch("tap_ringcentral.cache.contacts", [{"id": "ext1"}]), \
+             patch.dict("tap_ringcentral.AVAILABLE_STREAMS", {
+                 "call_log": MagicMock(REQUIRES=["contacts"]),
+             }):
+            runner = RingCentralRunner(self.mock_args, self.mock_client)
+            runner._prefill_contacts_cache()
+
+        mock_contacts_cls.assert_not_called()
+
+    @patch("tap_ringcentral.cache.contacts", [])
+    @patch("tap_ringcentral.ContactsStream")
+    def test_no_prefill_when_no_dependent_streams_selected(self, mock_contacts_cls):
+        """Cache is not pre-filled when no selected stream requires contacts."""
+        mock_entry = MagicMock(stream="company_call_log")
+        self.mock_args.catalog = MagicMock()
+        self.mock_args.catalog.get_selected_streams.return_value = [mock_entry]
+
+        with patch.dict("tap_ringcentral.AVAILABLE_STREAMS", {
+            "company_call_log": MagicMock(REQUIRES=[]),
+        }):
+            runner = RingCentralRunner(self.mock_args, self.mock_client)
+            runner._prefill_contacts_cache()
+
+        mock_contacts_cls.assert_not_called()

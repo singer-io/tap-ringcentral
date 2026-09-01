@@ -50,14 +50,12 @@ class AllFieldsIntegrationTest(RingCentralBaseTest, unittest.TestCase):
         return mock_client
 
     @patch("tap_ringcentral.streams.base.time.sleep")
-    @patch("tap_ringcentral.streams.base.save_state")
     @patch("singer.write_records")
     @patch("singer.write_schema")
     def test_sync_all_streams_emits_records(
         self,
         _mock_write_schema,
         mock_write_records,
-        _mock_save_state,
         _mock_sleep,
     ):
         """Sync all four streams and verify at least one record is written
@@ -112,14 +110,12 @@ class AllFieldsIntegrationTest(RingCentralBaseTest, unittest.TestCase):
         )
 
     @patch("tap_ringcentral.streams.base.time.sleep")
-    @patch("tap_ringcentral.streams.base.save_state")
     @patch("singer.write_records")
     @patch("singer.write_schema")
     def test_contacts_records_match_schema_fields(
         self,
         _mock_write_schema,
         mock_write_records,
-        _mock_save_state,
         _mock_sleep,
     ):
         """Verify that the record emitted for ``contacts`` contains only

@@ -157,6 +157,10 @@
         },
         "coverIndex": {
             "type": ["null", "integer"]
+        },
+        "processedUntil": {
+            "type": ["null", "string"],
+            "format": "date-time"
         }
     }
 }
