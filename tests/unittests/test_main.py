@@ -4,6 +4,7 @@ import sys
 from io import StringIO
 
 from tap_ringcentral import RingCentralRunner, main
+from tap_ringcentral.client import RingCentralForbiddenError
 
 
 class TestRingCentralRunner(unittest.TestCase):
@@ -132,7 +133,7 @@ class TestRingCentralRunner(unittest.TestCase):
             mock_stream_obj.sync.assert_called_once()
 
     def test_do_sync_with_stream_exception(self):
-        """Test do_sync raises exception when stream sync fails."""
+        """Test do_sync logs and continues (does not raise) when a stream sync fails."""
         # Setup mock stream that raises exception
         mock_stream_obj = MagicMock()
         mock_stream_obj.TABLE = "test_stream"
@@ -149,8 +150,35 @@ class TestRingCentralRunner(unittest.TestCase):
         # Mock the stream class
         with patch.dict("tap_ringcentral.AVAILABLE_STREAMS", {"test_stream": MagicMock(return_value=mock_stream_obj)}):
             runner = RingCentralRunner(self.mock_args, self.mock_client)
-            with self.assertRaises(Exception):
-                runner.do_sync()
+            # Should not raise; failure is logged and the run continues
+            runner.do_sync()
+
+    def test_do_sync_continues_to_next_stream_after_failure(self):
+        """A failure in one stream must not prevent other selected streams from syncing."""
+        failing_stream = MagicMock()
+        failing_stream.TABLE = "failing_stream"
+        failing_stream.state = self.state
+        failing_stream.sync.side_effect = Exception("Sync failed")
+
+        healthy_stream = MagicMock()
+        healthy_stream.TABLE = "healthy_stream"
+        healthy_stream.state = self.state
+        healthy_stream.sync.return_value = None
+
+        failing_entry = MagicMock(stream="failing_stream")
+        healthy_entry = MagicMock(stream="healthy_stream")
+
+        self.mock_args.catalog = MagicMock()
+        self.mock_args.catalog.get_selected_streams.return_value = [failing_entry, healthy_entry]
+
+        with patch.dict("tap_ringcentral.AVAILABLE_STREAMS", {
+            "failing_stream": MagicMock(return_value=failing_stream, REQUIRES=[]),
+            "healthy_stream": MagicMock(return_value=healthy_stream, REQUIRES=[]),
+        }):
+            runner = RingCentralRunner(self.mock_args, self.mock_client)
+            runner.do_sync()
+
+        healthy_stream.sync.assert_called_once()
 
 
 class TestMainFunction(unittest.TestCase):
@@ -309,3 +337,90 @@ class TestPrefillContactsCache(unittest.TestCase):
             runner._prefill_contacts_cache()
 
         mock_contacts_cls.assert_not_called()
+
+    @patch("tap_ringcentral.cache.contacts", [])
+    @patch("tap_ringcentral.ContactsStream")
+    def test_prefill_returns_false_when_contacts_forbidden(self, mock_contacts_cls):
+        """_prefill_contacts_cache returns False when fill_cache raises a forbidden error."""
+        mock_entry = MagicMock(stream="call_log")
+        self.mock_args.catalog = MagicMock()
+        self.mock_args.catalog.get_selected_streams.return_value = [mock_entry]
+
+        mock_contacts_cls.return_value.fill_cache.side_effect = RingCentralForbiddenError(
+            "HTTP-error-code: 403"
+        )
+
+        with patch.dict("tap_ringcentral.AVAILABLE_STREAMS", {
+            "call_log": MagicMock(REQUIRES=["contacts"]),
+        }):
+            runner = RingCentralRunner(self.mock_args, self.mock_client)
+            result = runner._prefill_contacts_cache()
+
+        self.assertFalse(result)
+
+    @patch("tap_ringcentral.cache.contacts", [])
+    @patch("tap_ringcentral.ContactsStream")
+    def test_prefill_returns_true_on_success(self, mock_contacts_cls):
+        """_prefill_contacts_cache returns True when fill_cache succeeds."""
+        mock_entry = MagicMock(stream="call_log")
+        self.mock_args.catalog = MagicMock()
+        self.mock_args.catalog.get_selected_streams.return_value = [mock_entry]
+
+        with patch.dict("tap_ringcentral.AVAILABLE_STREAMS", {
+            "call_log": MagicMock(REQUIRES=["contacts"]),
+        }):
+            runner = RingCentralRunner(self.mock_args, self.mock_client)
+            result = runner._prefill_contacts_cache()
+
+        self.assertTrue(result)
+
+
+class TestDoSyncWithContactsFailure(unittest.TestCase):
+    """Verify do_sync skips only contacts-dependent streams when the
+    contacts prefill fails, while independent streams still sync."""
+
+    def setUp(self):
+        self.config = {
+            "client_id": "test",
+            "client_secret": "test",
+            "refresh_token": "test",
+            "api_url": "https://platform.ringcentral.com",
+            "start_date": "2025-01-01T00:00:00Z",
+        }
+        self.state = {}
+        self.mock_client = MagicMock()
+        mock_args = MagicMock()
+        mock_args.config = self.config
+        mock_args.state = self.state
+        self.mock_args = mock_args
+
+    @patch("tap_ringcentral.cache.contacts", [])
+    @patch("tap_ringcentral.ContactsStream")
+    def test_dependent_stream_skipped_and_independent_stream_still_syncs(self, mock_contacts_cls):
+        """call_log (REQUIRES contacts) is skipped, company_call_log (no deps) still syncs."""
+        mock_contacts_cls.return_value.fill_cache.side_effect = RingCentralForbiddenError(
+            "HTTP-error-code: 403"
+        )
+
+        call_log_entry = MagicMock(stream="call_log")
+        company_entry = MagicMock(stream="company_call_log")
+        self.mock_args.catalog = MagicMock()
+        self.mock_args.catalog.get_selected_streams.return_value = [call_log_entry, company_entry]
+
+        call_log_obj = MagicMock()
+        call_log_obj.TABLE = "call_log"
+        call_log_obj.state = self.state
+
+        company_obj = MagicMock()
+        company_obj.TABLE = "company_call_log"
+        company_obj.state = self.state
+
+        with patch.dict("tap_ringcentral.AVAILABLE_STREAMS", {
+            "call_log": MagicMock(return_value=call_log_obj, REQUIRES=["contacts"]),
+            "company_call_log": MagicMock(return_value=company_obj, REQUIRES=[]),
+        }):
+            runner = RingCentralRunner(self.mock_args, self.mock_client)
+            runner.do_sync()
+
+        call_log_obj.sync.assert_not_called()
+        company_obj.sync.assert_called_once()

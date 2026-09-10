@@ -6,6 +6,7 @@ import pytz
 from tap_ringcentral.streams.base import BaseStream, ContactBaseStream
 from tap_ringcentral.streams.contacts import ContactsStream
 from tap_ringcentral.streams.company_call_log import CompanyCallLogStream
+from tap_ringcentral.client import RingCentralForbiddenError
 
 
 class TestContactsStreamFillCache(unittest.TestCase):
@@ -56,6 +57,14 @@ class TestContactsStreamFillCache(unittest.TestCase):
             stream.fill_cache()
         except Exception as e:
             self.fail(f"fill_cache raised unexpectedly with catalog=None: {e}")
+
+    @patch("tap_ringcentral.streams.contacts.tap_ringcentral.cache.contacts", new_callable=list)
+    def test_fill_cache_propagates_forbidden_error(self, _mock_cache):
+        """fill_cache must not swallow RingCentralForbiddenError; callers decide how to react."""
+        self.mock_client.make_request.side_effect = RingCentralForbiddenError("HTTP-error-code: 403")
+        stream = ContactsStream(self.config, {}, None, self.mock_client)
+        with self.assertRaises(RingCentralForbiddenError):
+            stream.fill_cache()
 
 
 class TestBaseStreamTransform(unittest.TestCase):
