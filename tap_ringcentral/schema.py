@@ -35,12 +35,8 @@ def get_schemas():
             replication_method=getattr(stream_metadata, "REPLICATION_METHOD", None),
         )
         mdata = metadata.to_map(mdata)
-        automatic_keys = getattr(stream_metadata, "REPLICATION_KEYS", [])
-        for field_name in schema["properties"].keys():
-            if field_name in automatic_keys:
-                mdata = metadata.write(
-                    mdata, ("properties", field_name), "inclusion", "automatic"
-                )
+        for key in getattr(stream_metadata, "REPLICATION_KEYS", []):
+            mdata = metadata.write(mdata, ("properties", key), "inclusion", "automatic")
         mdata = metadata.to_list(mdata)
         field_metadata[stream_name] = mdata
 

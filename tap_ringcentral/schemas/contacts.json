@@ -2,53 +2,53 @@
     "type": "object",
     "properties": {
         "id": {
-            "type": "integer"
+            "type": ["null", "integer"]
         },
         "type": {
-            "type": "string"
+            "type": ["null", "string"]
         },
         "status": {
-            "type": "string"
+            "type": ["null", "string"]
         },
         "firstName": {
-            "type": "string"
+            "type": ["null", "string"]
         },
         "lastName": {
-            "type": "string"
+            "type": ["null", "string"]
         },
         "email": {
-            "type": "string"
+            "type": ["null", "string"]
         },
         "extensionNumber": {
-            "type": "integer"
+            "type": ["null", "integer"]
         },
         "name": {
-            "type": "string"
+            "type": ["null", "string"]
         },
         "jobTitle": {
-            "type": "string"
+            "type": ["null", "string"]
         },
         "account": {
-            "type": "object",
+            "type": ["null", "object"],
             "properties": {
                 "id": {
-                    "type": "integer"
+                    "type": ["null", "integer"]
                 }
             }
         },
         "phoneNumbers": {
-            "type": "array",
+            "type": ["null", "array"],
             "items": {
-                "type": "object",
+                "type": ["null", "object"],
                 "properties": {
                     "type": {
-                        "type": "string"
+                        "type": ["null", "string"]
                     },
                     "phoneNumber": {
-                        "type": "string"
+                        "type": ["null", "string"]
                     },
                     "usageType": {
-                        "type": "string"
+                        "type": ["null", "string"]
                     }
                 }
             }
