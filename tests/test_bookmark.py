@@ -29,14 +29,12 @@ class BookmarkIntegrationTest(RingCentralBaseTest, unittest.TestCase):
     # ------------------------------------------------------------------
 
     @patch("tap_ringcentral.streams.base.time.sleep")
-    @patch("tap_ringcentral.streams.base.save_state")
     @patch("singer.write_records")
     @patch("singer.write_schema")
     def test_sync_uses_existing_bookmark(
         self,
         _mock_write_schema,
         mock_write_records,
-        _mock_save_state,
         _mock_sleep,
     ):
         """When state already contains a bookmark for ``company_call_log``,
@@ -92,14 +90,12 @@ class BookmarkIntegrationTest(RingCentralBaseTest, unittest.TestCase):
     # ------------------------------------------------------------------
 
     @patch("tap_ringcentral.streams.base.time.sleep")
-    @patch("tap_ringcentral.streams.base.save_state")
     @patch("singer.write_records")
     @patch("singer.write_schema")
     def test_sync_advances_bookmark(
         self,
         _mock_write_schema,
         _mock_write_records,
-        _mock_save_state,
         _mock_sleep,
     ):
         """After syncing ``call_log``, the bookmark in state should be
@@ -144,7 +140,7 @@ class BookmarkIntegrationTest(RingCentralBaseTest, unittest.TestCase):
         last_record = (
             self.state.get("bookmarks", {})
             .get("call_log", {})
-            .get("last_record")
+            .get("processedUntil")
         )
         self.assertIsNotNone(last_record)
         self.assertGreaterEqual(last_record, old_bookmark)
@@ -154,14 +150,12 @@ class BookmarkIntegrationTest(RingCentralBaseTest, unittest.TestCase):
     # ------------------------------------------------------------------
 
     @patch("tap_ringcentral.streams.base.time.sleep")
-    @patch("tap_ringcentral.streams.base.save_state")
     @patch("singer.write_records")
     @patch("singer.write_schema")
     def test_bookmark_created_when_no_prior_state(
         self,
         _mock_write_schema,
         _mock_write_records,
-        _mock_save_state,
         _mock_sleep,
     ):
         """Starting with empty state, verify that a bookmark is created
@@ -196,7 +190,7 @@ class BookmarkIntegrationTest(RingCentralBaseTest, unittest.TestCase):
 
         self.assertIn("bookmarks", self.state)
         self.assertIn("messages", self.state["bookmarks"])
-        self.assertIn("last_record", self.state["bookmarks"]["messages"])
+        self.assertIn("processedUntil", self.state["bookmarks"]["messages"])
 
 
 if __name__ == "__main__":

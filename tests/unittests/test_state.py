@@ -1,7 +1,29 @@
 import unittest
-from tap_ringcentral.state import incorporate, get_last_record_value_for_table, save_state, load_state
+from tap_ringcentral.state import incorporate, get_last_record_value_for_table, save_state, load_state, migrate_bookmark_format
 from unittest.mock import patch, MagicMock
 from dateutil.parser import parse
+
+
+class TestMigrateBookmarkFormat(unittest.TestCase):
+
+    def test_migrates_old_last_record_key_to_singer_standard(self):
+        """Old 'last_record' key is migrated to the replication key name."""
+        state = {"bookmarks": {"call_log": {"last_record": "2025-01-08T00:00:00Z"}}}
+        result = migrate_bookmark_format(state, "call_log", "processedUntil")
+        self.assertEqual(result["bookmarks"]["call_log"]["processedUntil"], "2025-01-08T00:00:00Z")
+
+    def test_noop_when_new_format_already_exists(self):
+        """No migration when the replication key already exists."""
+        state = {"bookmarks": {"call_log": {"processedUntil": "2025-01-08T00:00:00Z"}}}
+        result = migrate_bookmark_format(state, "call_log", "processedUntil")
+        self.assertNotIn("last_record", result["bookmarks"]["call_log"])
+        self.assertEqual(result["bookmarks"]["call_log"]["processedUntil"], "2025-01-08T00:00:00Z")
+
+    def test_noop_when_no_existing_bookmark(self):
+        """No migration when neither key exists in state."""
+        state = {}
+        result = migrate_bookmark_format(state, "call_log", "processedUntil")
+        self.assertEqual(result, {})
 
 
 class TestIncorporate(unittest.TestCase):
@@ -21,8 +43,7 @@ class TestIncorporate(unittest.TestCase):
         new_state = incorporate(state, "contacts", "last_record", "2025-01-15T00:00:00Z")
         self.assertIn("bookmarks", new_state)
         self.assertIn("contacts", new_state["bookmarks"])
-        self.assertEqual(new_state["bookmarks"]["contacts"]["last_record"], "2025-01-15T00:00:00Z")
-        self.assertEqual(new_state["bookmarks"]["contacts"]["field"], "last_record")
+        self.assertEqual(new_state["bookmarks"]["contacts"]["processedUntil"], "2025-01-15T00:00:00Z")
 
     def test_incorporate_none_value_returns_state_unchanged(self):
         """Test that incorporate with None value returns state unchanged."""
@@ -32,15 +53,15 @@ class TestIncorporate(unittest.TestCase):
 
     def test_incorporate_newer_value_updates_bookmark(self):
         """Test that a newer value replaces an older bookmark."""
-        state = {"bookmarks": {"contacts": {"field": "last_record", "last_record": "2025-01-01T00:00:00Z"}}}
+        state = {"bookmarks": {"contacts": {"processedUntil": "2025-01-01T00:00:00Z"}}}
         new_state = incorporate(state, "contacts", "last_record", "2025-02-01T00:00:00Z")
-        self.assertEqual(new_state["bookmarks"]["contacts"]["last_record"], "2025-02-01T00:00:00Z")
+        self.assertEqual(new_state["bookmarks"]["contacts"]["processedUntil"], "2025-02-01T00:00:00Z")
 
     def test_incorporate_older_value_does_not_update_bookmark(self):
         """Test that an older value does not overwrite a newer bookmark."""
-        state = {"bookmarks": {"contacts": {"field": "last_record", "last_record": "2025-02-01T00:00:00Z"}}}
+        state = {"bookmarks": {"contacts": {"processedUntil": "2025-02-01T00:00:00Z"}}}
         new_state = incorporate(state, "contacts", "last_record", "2025-01-01T00:00:00Z")
-        self.assertEqual(new_state["bookmarks"]["contacts"]["last_record"], "2025-02-01T00:00:00Z")
+        self.assertEqual(new_state["bookmarks"]["contacts"]["processedUntil"], "2025-02-01T00:00:00Z")
 
 
 class TestGetLastRecordValueForTable(unittest.TestCase):
