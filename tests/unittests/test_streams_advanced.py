@@ -6,6 +6,65 @@ import pytz
 from tap_ringcentral.streams.base import BaseStream, ContactBaseStream
 from tap_ringcentral.streams.contacts import ContactsStream
 from tap_ringcentral.streams.company_call_log import CompanyCallLogStream
+from tap_ringcentral.client import RingCentralForbiddenError
+
+
+class TestContactsStreamFillCache(unittest.TestCase):
+
+    def setUp(self):
+        self.config = {
+            "client_id": "test",
+            "client_secret": "test",
+            "refresh_token": "test",
+            "api_url": "https://platform.ringcentral.com",
+            "start_date": "2025-01-01T00:00:00Z",
+        }
+        self.mock_client = MagicMock()
+        self.mock_client.base_url = "https://platform.ringcentral.com"
+
+    @patch("tap_ringcentral.streams.contacts.tap_ringcentral.cache.contacts", new_callable=list)
+    def test_fill_cache_adds_only_id_entries(self, mock_cache):
+        """fill_cache stores only {'id': ...} entries without full record data."""
+        self.mock_client.make_request.return_value = {
+            "records": [{"id": "ext1", "name": "User 1"}, {"id": "ext2", "name": "User 2"}],
+            "paging": {"totalPages": 1},
+        }
+        stream = ContactsStream(self.config, {}, None, self.mock_client)
+        stream.fill_cache()
+        self.assertEqual(mock_cache, [{"id": "ext1"}, {"id": "ext2"}])
+
+    @patch("tap_ringcentral.streams.contacts.tap_ringcentral.cache.contacts", new_callable=list)
+    def test_fill_cache_paginates_all_pages(self, mock_cache):
+        """fill_cache fetches every page until totalPages is reached."""
+        self.mock_client.make_request.side_effect = [
+            {"records": [{"id": "ext1"}], "paging": {"totalPages": 2}},
+            {"records": [{"id": "ext2"}], "paging": {"totalPages": 2}},
+        ]
+        stream = ContactsStream(self.config, {}, None, self.mock_client)
+        stream.fill_cache()
+        self.assertEqual(self.mock_client.make_request.call_count, 2)
+        self.assertEqual(len(mock_cache), 2)
+
+    @patch("tap_ringcentral.streams.contacts.tap_ringcentral.cache.contacts", new_callable=list)
+    def test_fill_cache_does_not_require_catalog(self, _mock_cache):
+        """fill_cache works when catalog is None (no schema/transform needed)."""
+        self.mock_client.make_request.return_value = {
+            "records": [{"id": "ext1"}],
+            "paging": {"totalPages": 1},
+        }
+        stream = ContactsStream(self.config, {}, None, self.mock_client)
+        try:
+            stream.fill_cache()
+        except Exception as e:
+            self.fail(f"fill_cache raised unexpectedly with catalog=None: {e}")
+
+    @patch("tap_ringcentral.streams.contacts.tap_ringcentral.cache.contacts", new_callable=list)
+    def test_fill_cache_propagates_forbidden_error(self, _mock_cache):
+        """fill_cache must not swallow RingCentralForbiddenError; callers decide how to react."""
+        self.mock_client.make_request.side_effect = RingCentralForbiddenError("HTTP-error-code: 403")
+        stream = ContactsStream(self.config, {}, None, self.mock_client)
+        with self.assertRaises(RingCentralForbiddenError):
+            stream.fill_cache()
 
 
 class TestBaseStreamTransform(unittest.TestCase):
@@ -167,7 +226,7 @@ class TestCompanyCallLogStreamSyncDataForPeriod(unittest.TestCase):
         stream = CompanyCallLogStream(self.config, self.state, self.mock_catalog, self.mock_client)
 
         # Mock sync_data_for_extension instead of trying to run it
-        with patch.object(stream, 'sync_data_for_extension') as mock_sync:
+        with patch.object(stream, 'sync_data_for_extension', return_value=0) as mock_sync:
             date = datetime(2025, 1, 1, tzinfo=pytz.utc)
             interval = timedelta(days=7)
 
@@ -177,10 +236,10 @@ class TestCompanyCallLogStreamSyncDataForPeriod(unittest.TestCase):
             mock_sync.assert_called_once_with(date, interval, None)
 
     def test_sync_data_for_period_returns_updated_state(self):
-        """Test sync_data_for_period updates state with new bookmark."""
+        """Test sync_data_for_period updates state with new bookmark when records are synced."""
         stream = CompanyCallLogStream(self.config, self.state, self.mock_catalog, self.mock_client)
 
-        with patch.object(stream, 'sync_data_for_extension'):
+        with patch.object(stream, 'sync_data_for_extension', return_value=5):
             date = datetime(2025, 1, 1, tzinfo=pytz.utc)
             interval = timedelta(days=7)
 
@@ -188,6 +247,7 @@ class TestCompanyCallLogStreamSyncDataForPeriod(unittest.TestCase):
 
             self.assertIn("bookmarks", result)
             self.assertIn("company_call_log", result["bookmarks"])
+            self.assertIn("processedUntil", result["bookmarks"]["company_call_log"])
 
 
 class TestBaseStreamGetStreamDataWithContactId(unittest.TestCase):

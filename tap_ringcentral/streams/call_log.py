@@ -9,6 +9,9 @@ LOGGER = singer.get_logger()  # noqa
 class CallLogStream(ContactBaseStream):
     NAME = 'CallLogStream'
     KEY_PROPERTIES = ['id']
+    REPLICATION_METHOD = 'INCREMENTAL'
+    REPLICATION_KEYS = ['processedUntil']
+    REQUIRES = ['contacts']
     API_METHOD = 'GET'
     TABLE = 'call_log'
 

@@ -10,14 +10,14 @@ import time
 from typing import ClassVar, Optional
 
 from datetime import timedelta, datetime
+from dateutil.parser import parse
 
 import tap_ringcentral.cache
 from tap_ringcentral.config import get_config_start_date
 from tap_ringcentral.client import RingCentralForbiddenError
-from tap_ringcentral.state import incorporate, save_state, \
-    get_last_record_value_for_table
-
+from tap_ringcentral.state import migrate_bookmark_format
 from singer import metadata as meta
+from singer import get_bookmark, write_bookmark
 
 LOGGER = singer.get_logger()
 
@@ -27,6 +27,8 @@ class BaseStream:
     TABLE: Optional[str] = None
     REQUIRES: ClassVar[list] = []
     parent: Optional[str] = None
+    REPLICATION_METHOD: ClassVar[Optional[str]] = None
+    REPLICATION_KEYS: ClassVar[list] = []
     # Subclasses should override these attributes
     api_path: str
     API_METHOD: ClassVar[str]
@@ -165,10 +167,19 @@ class ContactBaseStream(BaseStream):
         table = self.TABLE
         LOGGER.info('Syncing data for entity {}'.format(table))
 
-        date = get_last_record_value_for_table(self.state, table)
+        replication_key = self.REPLICATION_KEYS[0] if self.REPLICATION_KEYS else 'processedUntil'
+        # Migrate state written by older versions of the tap before reading
+        self.state = migrate_bookmark_format(self.state, table, replication_key)
 
-        if date is None:
-            date = get_config_start_date(self.config)
+        bookmark_str = get_bookmark(
+            self.state,
+            table,
+            key=replication_key,
+            default=get_config_start_date(self.config)
+        )
+
+        # Parse bookmark to datetime
+        date = parse(bookmark_str) if isinstance(bookmark_str, str) else bookmark_str
 
         interval = timedelta(days=7)
 
@@ -176,14 +187,34 @@ class ContactBaseStream(BaseStream):
             self.sync_data_for_period(date, interval)
 
             date = date + interval
-            save_state(self.state)
 
     def sync_data_for_period(self, date, interval):
+        records_synced = 0
+        replication_key = self.REPLICATION_KEYS[0] if self.REPLICATION_KEYS else 'processedUntil'
+
         for extension in tap_ringcentral.cache.contacts:
             extensionId = extension['id']
-            self.sync_data_for_extension(date, interval, extensionId)
+            extension_records = self.sync_data_for_extension(date, interval, extensionId)
+            records_synced += extension_records
 
-        self.state = incorporate(self.state, self.TABLE, 'last_record', date.isoformat())
+        # Only advance bookmark if records were actually synced
+        if records_synced > 0:
+            self.state = write_bookmark(
+                self.state,
+                self.TABLE,
+                replication_key,
+                date.isoformat()
+            )
+            LOGGER.info(
+                'Synced %d records for %s. Bookmark advanced to %s',
+                records_synced, self.TABLE, date.isoformat()
+            )
+        else:
+            LOGGER.warning(
+                'No records synced for %s in period ending %s. Bookmark not advanced.',
+                self.TABLE, date.isoformat()
+            )
+
         return self.state
 
     def get_params(self, date_from, date_to, page, per_page):
@@ -205,6 +236,7 @@ class ContactBaseStream(BaseStream):
 
     def sync_data_for_extension(self, date, interval, extensionId):
         table = self.TABLE
+        total_records = 0
 
         try:
             page = 1
@@ -241,6 +273,7 @@ class ContactBaseStream(BaseStream):
                 with singer.metrics.record_counter(endpoint=table) as counter:
                     singer.write_records(table, data)
                     counter.increment(len(data))
+                    total_records += len(data)
 
                 if len(data) < per_page:
                     break
@@ -253,3 +286,5 @@ class ContactBaseStream(BaseStream):
                 extensionId,
                 str(e)
             )
+
+        return total_records

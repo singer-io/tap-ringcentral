@@ -32,11 +32,8 @@ class RingCentralBaseTest:
     def expected_metadata(cls):
         """Return a dict of stream-name → expected catalogue properties.
 
-        contacts uses BaseStream (FULL_TABLE, single page listing).
-        call_log, company_call_log and messages use ContactBaseStream
-        (INCREMENTAL, 7-day windowed sync) but the tap currently does NOT
-        declare REPLICATION_METHOD/REPLICATION_KEYS on the stream classes,
-        so the metadata reflects that.
+        contacts uses FULL_TABLE; call_log, company_call_log and messages
+        use INCREMENTAL with processedUntil as the replication key.
         """
         return {
             "contacts": {
@@ -47,20 +44,20 @@ class RingCentralBaseTest:
             },
             "call_log": {
                 cls.PRIMARY_KEYS: {"id"},
-                cls.REPLICATION_METHOD: None,
-                cls.REPLICATION_KEYS: set(),
+                cls.REPLICATION_METHOD: "INCREMENTAL",
+                cls.REPLICATION_KEYS: {"processedUntil"},
                 cls.OBEYS_START_DATE: True,
             },
             "company_call_log": {
                 cls.PRIMARY_KEYS: {"id"},
-                cls.REPLICATION_METHOD: None,
-                cls.REPLICATION_KEYS: set(),
+                cls.REPLICATION_METHOD: "INCREMENTAL",
+                cls.REPLICATION_KEYS: {"processedUntil"},
                 cls.OBEYS_START_DATE: True,
             },
             "messages": {
                 cls.PRIMARY_KEYS: {"id"},
-                cls.REPLICATION_METHOD: None,
-                cls.REPLICATION_KEYS: set(),
+                cls.REPLICATION_METHOD: "INCREMENTAL",
+                cls.REPLICATION_KEYS: {"processedUntil"},
                 cls.OBEYS_START_DATE: True,
             },
         }

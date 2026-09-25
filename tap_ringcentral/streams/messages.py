@@ -9,6 +9,9 @@ LOGGER = singer.get_logger()  # noqa
 class MessageStream(ContactBaseStream):
     NAME = 'MessageStream'
     KEY_PROPERTIES = ['id']
+    REPLICATION_METHOD = 'INCREMENTAL'
+    REPLICATION_KEYS = ['processedUntil']
+    REQUIRES = ['contacts']
     API_METHOD = 'GET'
     TABLE = 'messages'
     params = {'page': 1, 'perPage': 100, 'showDeleted': True}

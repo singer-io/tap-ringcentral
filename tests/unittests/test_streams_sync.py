@@ -190,18 +190,14 @@ class TestContactBaseStreamSyncData(unittest.TestCase):
         self.mock_client.base_url = "https://platform.ringcentral.com"
 
     @patch("tap_ringcentral.streams.base.tap_ringcentral.cache.contacts", [])
-    @patch("tap_ringcentral.streams.base.save_state")
-    @patch("tap_ringcentral.streams.base.get_last_record_value_for_table")
     @patch("tap_ringcentral.streams.base.get_config_start_date")
-    def test_sync_data_with_no_previous_state(self, mock_get_start_date, mock_get_last_record, mock_save_state):
+    def test_sync_data_with_no_previous_state(self, mock_get_start_date):
         """Test sync_data uses start_date when no previous state exists."""
         stream = ContactBaseStream(self.config, self.state, self.mock_catalog, self.mock_client)
         stream.TABLE = "test_table"
         stream.API_METHOD = "GET"
         stream.api_path = "/test/path/{extensionId}"
 
-        # Mock no previous bookmark
-        mock_get_last_record.return_value = None
         start_date = datetime(2025, 1, 1, tzinfo=pytz.utc)
         mock_get_start_date.return_value = start_date
 
@@ -213,23 +209,39 @@ class TestContactBaseStreamSyncData(unittest.TestCase):
         # Verify get_config_start_date was called
         mock_get_start_date.assert_called_once_with(self.config)
 
-    @patch("tap_ringcentral.streams.base.save_state")
-    def test_sync_data_for_period_returns_updated_state(self, mock_save_state):
-        """Test sync_data_for_period returns updated state."""
+    def test_sync_data_for_period_returns_updated_state_when_records_synced(self):
+        """Test sync_data_for_period advances bookmark only when records are synced."""
         stream = ContactBaseStream(self.config, self.state, self.mock_catalog, self.mock_client)
         stream.TABLE = "test_table"
+        stream.REPLICATION_KEY = "processedUntil"
 
-        # Mock sync_data_for_extension
-        stream.sync_data_for_extension = MagicMock()
+        stream.sync_data_for_extension = MagicMock(return_value=5)
 
         date = datetime(2025, 1, 1, tzinfo=pytz.utc)
         interval = timedelta(days=7)
 
-        with patch("tap_ringcentral.streams.base.tap_ringcentral.cache.contacts", []):
+        with patch("tap_ringcentral.streams.base.tap_ringcentral.cache.contacts", [{"id": 1}]):
             result = stream.sync_data_for_period(date, interval)
 
         self.assertIsNotNone(result)
         self.assertIn("bookmarks", result)
+        self.assertIn("processedUntil", result["bookmarks"]["test_table"])
+
+    def test_sync_data_for_period_does_not_advance_bookmark_when_no_records(self):
+        """Test sync_data_for_period does not advance bookmark when no records synced."""
+        stream = ContactBaseStream(self.config, self.state, self.mock_catalog, self.mock_client)
+        stream.TABLE = "test_table"
+        stream.REPLICATION_KEY = "processedUntil"
+
+        stream.sync_data_for_extension = MagicMock(return_value=0)
+
+        date = datetime(2025, 1, 1, tzinfo=pytz.utc)
+        interval = timedelta(days=7)
+
+        with patch("tap_ringcentral.streams.base.tap_ringcentral.cache.contacts", [{"id": 1}]):
+            result = stream.sync_data_for_period(date, interval)
+
+        self.assertNotIn("bookmarks", result)
 
     @patch("tap_ringcentral.streams.base.time.sleep")
     @patch("tap_ringcentral.streams.base.singer.write_records")
@@ -289,6 +301,29 @@ class TestContactBaseStreamSyncData(unittest.TestCase):
 
         # Verify API was called twice
         self.assertEqual(self.mock_client.make_request.call_count, 2)
+
+    @patch("tap_ringcentral.streams.base.time.sleep")
+    @patch("tap_ringcentral.streams.base.singer.write_records")
+    @patch("tap_ringcentral.streams.base.singer.metrics.record_counter")
+    def test_sync_data_for_extension_returns_record_count(self, mock_counter_context, mock_write_records, mock_sleep):
+        """sync_data_for_extension returns the total count of records synced."""
+        stream = ContactBaseStream(self.config, self.state, self.mock_catalog, self.mock_client)
+        stream.TABLE = "test_table"
+        stream.API_METHOD = "GET"
+        stream.api_path = "/test/path/{extensionId}"
+        stream.transform_record = MagicMock(side_effect=lambda r: r)
+
+        self.mock_client.make_request.return_value = {
+            "records": [{"id": "1"}, {"id": "2"}, {"id": "3"}],
+        }
+        mock_counter = MagicMock()
+        mock_counter_context.return_value.__enter__.return_value = mock_counter
+
+        date = datetime(2025, 1, 1, tzinfo=pytz.utc)
+        interval = timedelta(days=7)
+        result = stream.sync_data_for_extension(date, interval, "ext123")
+
+        self.assertEqual(result, 3)
 
     @patch("tap_ringcentral.streams.base.time.sleep")
     def test_sync_data_for_extension_handles_forbidden_error(self, mock_sleep):

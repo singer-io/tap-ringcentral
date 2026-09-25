@@ -14,11 +14,11 @@
             "type": ["null", "string"]
         },
         "startTime": {
-            "type": "string",
+            "type": ["null", "string"],
             "format": "date-time"
         },
         "duration": {
-            "type": "integer"
+            "type": ["null", "integer"]
         },
         "type": {
             "type": ["null", "string"]
@@ -32,12 +32,31 @@
         "result": {
             "type": ["null", "string"]
         },
-        "deleted": {},
-        "reason": {},
-        "reasonDescription": {},
-        "message": {},
+        "deleted": {
+            "type": ["null", "boolean"]
+        },
+        "reason": {
+            "type": ["null", "string"]
+        },
+        "reasonDescription": {
+            "type": ["null", "string"]
+        },
+        "message": {
+            "type": ["null", "object"],
+            "properties": {
+                "id": {
+                    "type": ["null", "string"]
+                },
+                "type": {
+                    "type": ["null", "string"]
+                },
+                "uri": {
+                    "type": ["null", "string"]
+                }
+            }
+        },
         "to": {
-            "type": "object",
+            "type": ["null", "object"],
             "properties": {
                 "name": {
                     "type": ["null", "string"]
@@ -54,7 +73,7 @@
             }
         },
         "from": {
-            "type": "object",
+            "type": ["null", "object"],
             "properties": {
                 "phoneNumber": {
                     "type": ["null", "string"]
@@ -71,15 +90,19 @@
             }
         },
         "extension": {
-            "type": "object",
+            "type": ["null", "object"],
             "properties": {
                 "uri": {
                     "type": ["null", "string"]
                 },
                 "id": {
-                    "type": "integer"
+                    "type": ["null", "integer"]
                 }
             }
+        },
+        "processedUntil": {
+            "type": ["null", "string"],
+            "format": "date-time"
         }
     }
 }

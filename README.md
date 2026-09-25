@@ -13,6 +13,21 @@ It:
     - [Company Call Logs](https://developers.ringcentral.com/api-reference#Call-Log-loadCompanyCallLog)
     - [SMS/MMS/Voicemal/Fax](https://developers.ringcentral.com/api-reference#SMS-and-MMS-listMessages)
 
+### Replication
+
+| Stream | Replication Method | Bookmark |
+| --- | --- | --- |
+| `contacts` | FULL_TABLE | n/a |
+| `company_call_log` | INCREMENTAL | `processedUntil` |
+| `call_log` (User Call Logs) | INCREMENTAL | `processedUntil` |
+| `messages` (SMS/MMS/Voicemail/Fax) | INCREMENTAL | `processedUntil` |
+
+`call_log` and `messages` are extension-based streams: to sync them, the tap first fetches the list of
+extensions from the `contacts` directory (even if `contacts` itself isn't selected), then syncs each
+extension's records individually. If the `contacts` directory can't be read (for example due to a
+permissions error), `call_log` and `messages` are skipped for that run and an error is logged. Streams
+that don't depend on contacts, such as `company_call_log`, are unaffected and continue to sync normally.
+
 ### Quick Start
 
 #### 1. Install
@@ -46,6 +61,10 @@ The following permissions are required:
 - Read Accounts
 - Read Call Log
 - Read Messages
+
+Note: `Read Accounts` is required to list extensions via the `contacts` directory, which `call_log`
+and `messages` depend on. If this permission is missing or the directory otherwise can't be read,
+those two streams will be skipped rather than syncing incomplete data.
 
 #### 3. Create the config file.
 
