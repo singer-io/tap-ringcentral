@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.0.0
+  * Updated code to use singer specififc bookmarking, code enhancements by handling stream dependency and schema improvement [#28](https://github.com/singer-io/tap-ringcentral/pull/28)
+
 ## 1.3.0
   * Exclude unauthorized streams from the catalog [#26](https://github.com/singer-io/tap-ringcentral/pull/26)
 
