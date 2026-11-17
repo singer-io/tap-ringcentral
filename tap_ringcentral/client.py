@@ -20,6 +20,12 @@ class AuthFailedException(APIException):
     pass
 
 
+class RingCentralForbiddenError(Exception):
+    """Raised when the RingCentral API returns HTTP 403 Forbidden,
+    indicating that the credentials lack read access to a resource."""
+    pass
+
+
 class RingCentralClient:
 
     MAX_TRIES = 7
@@ -98,7 +104,12 @@ class RingCentralClient:
             time.sleep(int(timeout))
             raise APIException("Rate limit exceeded")
 
-        elif response.status_code in [401, 403]:
+        elif response.status_code == 403:
+            raise RingCentralForbiddenError(
+                "HTTP-error-code: 403, Error: {}".format(response.text)
+            )
+
+        elif response.status_code == 401:
             # Unauthorized - has the token expired?
             self.refresh_token, self.access_token = self.get_authorization()
             raise APIException("Token expired - refetching")

@@ -23,14 +23,12 @@ class StartDateIntegrationTest(RingCentralBaseTest, unittest.TestCase):
         self.state = {}
 
     @patch("tap_ringcentral.streams.base.time.sleep")
-    @patch("tap_ringcentral.streams.base.save_state")
     @patch("singer.write_records")
     @patch("singer.write_schema")
     def test_sync_starts_from_config_start_date_when_no_bookmark(
         self,
         _mock_write_schema,
         mock_write_records,
-        _mock_save_state,
         _mock_sleep,
     ):
         """With empty state the first ``dateFrom`` passed to the API should
@@ -75,14 +73,12 @@ class StartDateIntegrationTest(RingCentralBaseTest, unittest.TestCase):
         )
 
     @patch("tap_ringcentral.streams.base.time.sleep")
-    @patch("tap_ringcentral.streams.base.save_state")
     @patch("singer.write_records")
     @patch("singer.write_schema")
     def test_updated_start_date_is_reflected(
         self,
         _mock_write_schema,
         mock_write_records,
-        _mock_save_state,
         _mock_sleep,
     ):
         """When the config start_date is changed, the new value should be used."""
@@ -125,14 +121,12 @@ class StartDateIntegrationTest(RingCentralBaseTest, unittest.TestCase):
         )
 
     @patch("tap_ringcentral.streams.base.time.sleep")
-    @patch("tap_ringcentral.streams.base.save_state")
     @patch("singer.write_records")
     @patch("singer.write_schema")
     def test_call_log_uses_start_date_per_extension(
         self,
         _mock_write_schema,
         mock_write_records,
-        _mock_save_state,
         _mock_sleep,
     ):
         """For extension-based streams (call_log, messages), the start_date

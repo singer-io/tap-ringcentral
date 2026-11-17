@@ -94,14 +94,12 @@ class SyncIntegrationTest(RingCentralBaseTest, unittest.TestCase):
     # ------------------------------------------------------------------
 
     @patch("tap_ringcentral.streams.base.time.sleep")
-    @patch("tap_ringcentral.streams.base.save_state")
     @patch("singer.write_records")
     @patch("singer.write_schema")
     def test_call_log_iterates_over_extensions(
         self,
         _mock_write_schema,
         mock_write_records,
-        _mock_save_state,
         _mock_sleep,
     ):
         """``call_log`` should make one API call per cached contact/extension."""
@@ -152,14 +150,12 @@ class SyncIntegrationTest(RingCentralBaseTest, unittest.TestCase):
     # ------------------------------------------------------------------
 
     @patch("tap_ringcentral.streams.base.time.sleep")
-    @patch("tap_ringcentral.streams.base.save_state")
     @patch("singer.write_records")
     @patch("singer.write_schema")
     def test_company_call_log_single_api_call(
         self,
         _mock_write_schema,
         mock_write_records,
-        _mock_save_state,
         _mock_sleep,
     ):
         """``company_call_log`` calls the account-level endpoint once per
@@ -206,7 +202,6 @@ class SyncIntegrationTest(RingCentralBaseTest, unittest.TestCase):
     # ------------------------------------------------------------------
 
     @patch("tap_ringcentral.streams.base.time.sleep")
-    @patch("tap_ringcentral.streams.base.save_state")
     @patch("singer.write_state")
     @patch("singer.write_records")
     @patch("singer.write_schema")
@@ -215,7 +210,6 @@ class SyncIntegrationTest(RingCentralBaseTest, unittest.TestCase):
         _mock_write_schema,
         mock_write_records,
         mock_write_state,
-        _mock_save_state,
         _mock_sleep,
     ):
         """``RingCentralRunner.do_sync`` should invoke sync for every
@@ -270,14 +264,12 @@ class SyncIntegrationTest(RingCentralBaseTest, unittest.TestCase):
     # ------------------------------------------------------------------
 
     @patch("tap_ringcentral.streams.base.time.sleep")
-    @patch("tap_ringcentral.streams.base.save_state")
     @patch("singer.write_records")
     @patch("singer.write_schema")
     def test_messages_syncs_multiple_windows(
         self,
         _mock_write_schema,
         mock_write_records,
-        _mock_save_state,
         _mock_sleep,
     ):
         """If the date range spans more than 7 days, multiple windows are
